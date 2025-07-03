@@ -1,0 +1,389 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // Hashed password
+  name      String?
+  emailVerified DateTime?
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Onboarding status
+  hasCompletedOnboarding Boolean @default(false)
+  onboardingData Json?
+
+  // User can be member of multiple groups (budgets)
+  memberships GroupMember[]
+
+  // User preferences and settings
+  preferences Json?
+  timezone    String @default("UTC")
+
+  // Authentication related
+  accounts Account[]
+  sessions Session[]
+  verificationTokens VerificationToken[]
+  passwordResetTokens PasswordResetToken[]
+  
+  // Group invitations sent and received
+  invitationsSent GroupInvitation[] @relation("InvitationsSent")
+  invitationsAccepted GroupInvitation[] @relation("InvitationsAccepted")
+
+  @@map("users")
+}
+
+// NextAuth models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  id         String   @id @default(cuid())
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model PasswordResetToken {
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
+  expires DateTime
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
+}
+
+model GroupInvitation {
+  id          String     @id @default(cuid())
+  email       String
+  token       String     @unique
+  role        GroupRole  @default(VIEWER)
+  expires     DateTime
+  isAccepted  Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  acceptedAt  DateTime?
+
+  // Who sent the invitation
+  invitedBy   String
+  inviter     User       @relation("InvitationsSent", fields: [invitedBy], references: [id], onDelete: Cascade)
+
+  // Which group the invitation is for
+  groupId     String
+  group       BudgetGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  // Who accepted the invitation (if anyone)
+  acceptedBy  String?
+  accepter    User?      @relation("InvitationsAccepted", fields: [acceptedBy], references: [id], onDelete: Cascade)
+
+  @@map("group_invitations")
+}
+
+model BudgetGroup {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  currency    String   @default("USD")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Group members and ownership
+  members GroupMember[]
+  invitations GroupInvitation[]
+
+  // Group financial data
+  budgetAccounts       BudgetAccount[]
+  categoryGroups CategoryGroup[]
+  transactions   Transaction[]
+  budgets        Budget[]
+  moneyMoves     MoneyMove[]
+  goals          Goal[]
+
+  @@map("budget_groups")
+}
+
+model GroupMember {
+  id     String @id @default(cuid())
+  userId String
+  groupId String
+  role   GroupRole @default(VIEWER)
+  joinedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group BudgetGroup  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+  @@map("group_members")
+}
+
+enum GroupRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+model BudgetAccount {
+  id          String      @id @default(cuid())
+  name        String
+  type        AccountType
+  balance     Decimal     @default(0) @db.Decimal(12, 2)
+  isOnBudget  Boolean     @default(true) // Tracking vs Budget accounts
+  isClosed    Boolean     @default(false)
+  institution String?
+  accountNumber String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  groupId String
+  group   BudgetGroup  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  // Transactions from this account
+  transactionsFrom Transaction[] @relation("FromAccount")
+  // Transactions to this account (for transfers)
+  transactionsTo   Transaction[] @relation("ToAccount")
+
+  @@map("budget_accounts")
+}
+
+enum AccountType {
+  CHECKING
+  SAVINGS
+  CASH
+  CREDIT_CARD
+  LINE_OF_CREDIT
+  INVESTMENT
+  MORTGAGE
+  LOAN
+  OTHER_ASSET
+  OTHER_LIABILITY
+}
+
+model CategoryGroup {
+  id        String   @id @default(cuid())
+  name      String
+  sortOrder Int      @default(0)
+  isHidden  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  groupId String
+  group   BudgetGroup  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  categories Category[]
+  goals      Goal[]
+
+  @@map("category_groups")
+}
+
+model Category {
+  id          String  @id @default(cuid())
+  name        String
+  note        String?
+  sortOrder   Int     @default(0)
+  isHidden    Boolean @default(false)
+  isMasterCategory Boolean @default(false) // For system categories like "To Be Budgeted"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  categoryGroupId String
+  categoryGroup   CategoryGroup @relation(fields: [categoryGroupId], references: [id], onDelete: Cascade)
+
+  transactions Transaction[]
+  budgets      Budget[]
+  goals        Goal[]
+  transactionSplits TransactionSplit[]
+  
+  // Money moves - need different relation names to avoid ambiguity
+  moneyMovesFrom MoneyMove[] @relation("FromCategory")
+  moneyMovesTo   MoneyMove[] @relation("ToCategory")
+
+  @@map("categories")
+}
+
+model Transaction {
+  id          String            @id @default(cuid())
+  date        DateTime
+  amount      Decimal           @db.Decimal(12, 2)
+  memo        String?
+  payee       String?
+  cleared     TransactionStatus @default(UNCLEARED)
+  approved    Boolean           @default(true)
+  flagColor   String?           // Color flag for organization
+  importId    String?           // For bank import reconciliation
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  groupId String
+  group   BudgetGroup  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  // Account relationships
+  fromAccountId String
+  fromAccount   BudgetAccount @relation("FromAccount", fields: [fromAccountId], references: [id])
+  
+  toAccountId String?
+  toAccount   BudgetAccount? @relation("ToAccount", fields: [toAccountId], references: [id])
+
+  // Category relationship
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  // For split transactions
+  splits TransactionSplit[]
+
+  @@map("transactions")
+}
+
+enum TransactionStatus {
+  UNCLEARED
+  CLEARED
+  RECONCILED
+}
+
+model TransactionSplit {
+  id     String  @id @default(cuid())
+  amount Decimal @db.Decimal(12, 2)
+  memo   String?
+
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  @@map("transaction_splits")
+}
+
+model Budget {
+  id       String  @id @default(cuid())
+  month    DateTime // First day of the budget month
+  budgeted Decimal  @default(0) @db.Decimal(12, 2)
+  activity Decimal  @default(0) @db.Decimal(12, 2) // Sum of transactions in this category for this month
+  available Decimal @default(0) @db.Decimal(12, 2) // budgeted + previous available - activity
+  note     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  groupId String
+  group   BudgetGroup  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, categoryId, month])
+  @@map("budgets")
+}
+
+model Goal {
+  id         String   @id @default(cuid())
+  type       GoalType
+  name       String?
+  description String?
+  targetAmount Decimal? @db.Decimal(12, 2)
+  targetDate DateTime?
+  monthlyAmount Decimal? @db.Decimal(12, 2)
+  weeklyAmount Decimal? @db.Decimal(12, 2)
+  weeklyDay    Int? // 0=Sunday, 1=Monday, etc.
+  yearlyAmount Decimal? @db.Decimal(12, 2)
+  currentAmount Decimal @default(0) @db.Decimal(12, 2) // Progress tracking
+  isCompleted Boolean @default(false)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  groupId String
+  group   BudgetGroup  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  categoryGroupId String?
+  categoryGroup   CategoryGroup? @relation(fields: [categoryGroupId], references: [id], onDelete: Cascade)
+
+  @@map("goals")
+}
+
+enum GoalType {
+  TARGET_BALANCE // Save $X by date
+  TARGET_BALANCE_BY_DATE // Save $X by specific date
+  MONTHLY_FUNDING // Save $X each month
+  WEEKLY_FUNDING // Save $X each week
+  YEARLY_FUNDING // Save $X each year
+  PERCENT_OF_INCOME // Save X% of income
+  CUSTOM // Custom goal with flexible parameters
+}
+
+model MoneyMove {
+  id          String    @id @default(cuid())
+  amount      Decimal   @db.Decimal(12, 2)
+  memo        String?
+  movedAt     DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+
+  groupId String
+  group   BudgetGroup  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  fromCategoryId String
+  fromCategory   Category @relation("FromCategory", fields: [fromCategoryId], references: [id])
+
+  toCategoryId String
+  toCategory   Category @relation("ToCategory", fields: [toCategoryId], references: [id])
+
+  @@map("money_moves")
+}
+
+// For offline sync
+model SyncLog {
+  id        String   @id @default(cuid())
+  entityType String // "transaction", "budget", etc.
+  entityId  String
+  action    String   // "create", "update", "delete"
+  data      Json?
+  syncedAt  DateTime?
+  createdAt DateTime @default(now())
+
+  @@map("sync_logs")
+} 

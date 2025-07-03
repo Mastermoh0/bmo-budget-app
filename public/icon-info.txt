@@ -1,0 +1,16 @@
+PWA Icons Required:
+
+1. icon-192x192.png - 192x192 pixels
+2. icon-512x512.png - 512x512 pixels
+
+For the Budget App, create icons with:
+- Background color: #005A8B (YNAB Blue)
+- Icon symbol: $ or budget/chart symbol
+- White or light colored symbol
+
+You can use tools like:
+- Figma, Canva, or Adobe Illustrator for design
+- PWA Asset Generator for automated icon generation
+- Favicon.io for simple icon creation
+
+Place the icon files in the /public directory to match the manifest.json references. 
