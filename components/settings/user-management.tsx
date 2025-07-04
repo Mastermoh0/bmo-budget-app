@@ -116,11 +116,44 @@ export function UserManagement({ groupId, currentUserRole, currentUserId }: User
       const data = await response.json()
 
       if (response.ok) {
-        setSuccess(`Invitation sent to ${inviteForm.email}`)
+        setSuccess(data.message || `Invitation sent to ${inviteForm.email}`)
         setInviteForm({ email: '', role: 'VIEWER' })
         fetchInvitations() // Refresh invitations list
       } else {
         setError(data.error || 'Failed to send invitation')
+      }
+    } catch (error) {
+      setError('Network error. Please try again.')
+    } finally {
+      setInviting(false)
+    }
+  }
+
+  const handleResendInvitation = async (email: string, role: string) => {
+    setInviting(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const response = await fetch('/api/invitations/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email,
+          role: role,
+          groupId: groupId
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setSuccess(data.message || `Invitation resent to ${email}`)
+        fetchInvitations() // Refresh invitations list
+      } else {
+        setError(data.error || 'Failed to resend invitation')
       }
     } catch (error) {
       setError('Network error. Please try again.')
@@ -389,9 +422,21 @@ export function UserManagement({ groupId, currentUserRole, currentUserId }: User
                   </div>
                 </div>
 
-                <div className={`flex items-center space-x-1 px-3 py-1 rounded-full border text-xs font-medium ${getRoleColor(invitation.role)}`}>
-                  {getRoleIcon(invitation.role)}
-                  <span>{invitation.role}</span>
+                <div className="flex items-center space-x-3">
+                  <div className={`flex items-center space-x-1 px-3 py-1 rounded-full border text-xs font-medium ${getRoleColor(invitation.role)}`}>
+                    {getRoleIcon(invitation.role)}
+                    <span>{invitation.role}</span>
+                  </div>
+                  
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleResendInvitation(invitation.email, invitation.role)}
+                    disabled={inviting}
+                    className="text-xs"
+                  >
+                    Resend
+                  </Button>
                 </div>
               </div>
             ))}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { ChevronDown, ChevronRight, Target, Plus, Edit3, Check, X, EyeOff, Trash2 } from 'lucide-react'
-import { formatCurrency, getCurrentMonth } from '@/lib/utils'
+import { formatCurrency, getCurrentMonth, formatMonthYear } from '@/lib/utils'
 import { CategoryGroupEditor } from './CategoryGroupEditor'
 import { CategoryEditor } from './CategoryEditor'
 import { BudgetAmountInput } from './BudgetAmountInput'
@@ -180,28 +180,47 @@ export function BudgetMain({ selectedPlanId, showTargetPanel, setShowTargetPanel
   }
 
   // Handle budget amount updates
-  const handleBudgetUpdate = (categoryId, newAmount) => {
-    setBudgetData(prev => ({
-      ...prev,
-      categoryGroups: prev.categoryGroups.map(group => ({
-        ...group,
-        categories: group.categories.map(cat =>
-          cat.id === categoryId
-            ? { ...cat, budgeted: newAmount, available: newAmount + cat.activity }
-            : cat
-        )
+  const handleBudgetUpdate = (categoryId, newAmount, updatedCategory = null) => {
+    if (updatedCategory) {
+      // New interface - update the entire category with API response
+      setBudgetData(prev => ({
+        ...prev,
+        categoryGroups: prev.categoryGroups.map(group => ({
+          ...group,
+          categories: group.categories.map(cat =>
+            cat.id === categoryId ? {
+              ...cat,
+              budgeted: updatedCategory.budgeted || newAmount,
+              activity: updatedCategory.activity || cat.activity,
+              available: updatedCategory.available || ((updatedCategory.budgeted || newAmount) + cat.activity)
+            } : cat
+          )
+        }))
       }))
-    }))
+    } else {
+      // Old interface - simple amount update
+      setBudgetData(prev => ({
+        ...prev,
+        categoryGroups: prev.categoryGroups.map(group => ({
+          ...group,
+          categories: group.categories.map(cat =>
+            cat.id === categoryId
+              ? { ...cat, budgeted: newAmount, available: newAmount + cat.activity }
+              : cat
+          )
+        }))
+      }))
+    }
 
-    // Recalculate "To Be Budgeted" amount
+    // Recalculate "To Be Budgeted" amount for both interfaces
     setBudgetData(prev => {
       const totalBudgeted = prev.categoryGroups.reduce((total, group) =>
-        total + group.categories.reduce((catTotal, cat) => catTotal + cat.budgeted, 0), 0
+        total + group.categories.reduce((catTotal, cat) => catTotal + (cat.budgeted || 0), 0), 0
       )
       return {
         ...prev,
         totalBudgeted,
-        toBeBudgeted: 5000 - totalBudgeted // 5000 is our demo income
+        toBeBudgeted: (prev.totalIncome || 0) - totalBudgeted
       }
     })
   }
@@ -571,6 +590,34 @@ export function BudgetMain({ selectedPlanId, showTargetPanel, setShowTargetPanel
 
   return (
     <div className="flex-1 bg-white overflow-auto">
+      {/* Budget Summary Header */}
+      <div className="bg-ynab-blue text-white px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">
+              {formatMonthYear(currentMonth)} Budget
+            </h2>
+            <p className="text-ynab-gray-200 text-sm">
+              Plan your spending for this month
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-sm text-ynab-gray-200">To Be Budgeted</div>
+            <div className={`text-2xl font-bold ${
+              (budgetData?.toBeBudgeted || 0) > 0 ? 'text-white' : 
+              (budgetData?.toBeBudgeted || 0) < 0 ? 'text-ynab-yellow' : 'text-ynab-gray-300'
+            }`}>
+              {formatCurrency(budgetData?.toBeBudgeted || 0)}
+            </div>
+            {(budgetData?.toBeBudgeted || 0) < 0 && (
+              <div className="text-xs text-ynab-yellow mt-1">
+                You've budgeted more than you have!
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Add Category Group Button - Now at the top */}
       <CategoryGroupEditor
         group={null}
@@ -582,7 +629,7 @@ export function BudgetMain({ selectedPlanId, showTargetPanel, setShowTargetPanel
 
       {/* Table Header */}
       <div className="sticky top-0 bg-ynab-blue text-white px-6 py-3 text-sm font-semibold">
-        <div className="grid gap-4 items-center" style={{ gridTemplateColumns: '40px 1fr 120px 120px 120px' }}>
+        <div className="grid gap-4 items-center" style={{ gridTemplateColumns: '50px 1fr 140px 140px 140px' }}>
           <div className="flex items-center">
             <input
               type="checkbox"
@@ -720,7 +767,7 @@ export function BudgetMain({ selectedPlanId, showTargetPanel, setShowTargetPanel
                       className={`px-6 py-3 hover:bg-ynab-gray-50 items-center group grid gap-4 ${
                         hiddenCategories.has(category.id) ? 'opacity-50 bg-red-50' : ''
                       }`}
-                      style={{ gridTemplateColumns: '40px 1fr 120px 120px 120px' }}
+                      style={{ gridTemplateColumns: '50px 1fr 140px 140px 140px' }}
                       onContextMenu={(e) => handleRightClick(e, category, 'category')}
                     >
                       <div className="flex items-center">
@@ -818,8 +865,6 @@ export function BudgetMain({ selectedPlanId, showTargetPanel, setShowTargetPanel
           )
         })}
       </div>
-
-
 
       {/* Context Menu */}
       <ContextMenu

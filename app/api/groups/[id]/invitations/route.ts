@@ -17,7 +17,7 @@ export async function GET(
     const groupId = params.id
 
     // Check if user is a member of this group
-    const userMembership = await prisma.userGroup.findFirst({
+    const userMembership = await prisma.groupMember.findFirst({
       where: {
         userId: session.user.id,
         groupId: groupId

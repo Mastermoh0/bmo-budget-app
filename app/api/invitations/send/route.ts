@@ -88,7 +88,7 @@ export async function POST(request: Request) {
       )
     }
 
-    // Check if there's already a pending invitation
+    // Check if there's already a pending invitation and invalidate it
     const existingInvitation = await prisma.groupInvitation.findFirst({
       where: {
         email: email.toLowerCase(),
@@ -100,11 +100,12 @@ export async function POST(request: Request) {
       }
     })
 
+    // If there's an existing invitation, mark it as expired to allow a new one
     if (existingInvitation) {
-      return NextResponse.json(
-        { error: 'There is already a pending invitation for this email address' },
-        { status: 400 }
-      )
+      await prisma.groupInvitation.update({
+        where: { id: existingInvitation.id },
+        data: { expires: new Date() } // Set expiry to now to invalidate it
+      })
     }
 
     // Generate invitation token and set expiration (7 days)
@@ -153,14 +154,15 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      message: 'Invitation sent successfully',
+      message: existingInvitation ? 'Invitation resent successfully' : 'Invitation sent successfully',
       invitation: {
         id: invitation.id,
         email: invitation.email,
         role: invitation.role,
         expires: invitation.expires,
         createdAt: invitation.createdAt
-      }
+      },
+      isResend: !!existingInvitation
     })
 
   } catch (error) {

@@ -36,7 +36,7 @@ export default function SignInPage() {
     const urlMessage = searchParams.get('message')
     if (urlMessage) {
       if (urlMessage === 'account-deleted') {
-        setMessage('Your account has been permanently deleted. Thank you for using BMO Budget App.')
+        setMessage('Your account has been permanently deleted. You can now create a new account with the same email if you wish. Thank you for using BMO Budget App.')
       } else {
         setMessage(urlMessage)
       }

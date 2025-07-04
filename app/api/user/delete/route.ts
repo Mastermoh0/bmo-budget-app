@@ -12,123 +12,147 @@ export async function DELETE(request: NextRequest) {
     }
 
     const userId = session.user.id
+    console.log(`🗑️ Starting account deletion for user: ${userId}`)
 
-    // Delete user and all associated data (cascading deletes should handle most of this)
-    // But we'll be explicit about the order to ensure clean deletion
-    
-    // 1. Delete password reset tokens
-    await prisma.passwordResetToken.deleteMany({
-      where: { userId }
-    })
+    // Delete user and all associated data in a transaction
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete all authentication related data
+      console.log('📝 Cleaning up auth data...')
+      await tx.verificationToken.deleteMany({ where: { userId } })
+      await tx.passwordResetToken.deleteMany({ where: { userId } })
+      await tx.session.deleteMany({ where: { userId } })
+      await tx.account.deleteMany({ where: { userId } })
 
-    // 2. Delete user sessions
-    await prisma.session.deleteMany({
-      where: { userId }
-    })
-
-    // 3. Delete accounts (OAuth accounts)
-    await prisma.budgetAccount.deleteMany({
-      where: { userId }
-    })
-
-    // 4. Find all budget groups the user owns
-    const userBudgetGroups = await prisma.budgetGroup.findMany({
-      where: {
-        members: {
-          some: {
-            userId,
-            role: 'OWNER'
-          }
-        }
-      },
-      select: { id: true }
-    })
-
-    // 5. Delete all data from owned budget groups
-    for (const group of userBudgetGroups) {
-      const groupId = group.id
-
-      // Delete goals
-      await prisma.goal.deleteMany({
-        where: { groupId }
-      })
-
-      // Delete budgets
-      await prisma.budget.deleteMany({
-        where: { groupId }
-      })
-
-      // Delete transaction splits
-      await prisma.transactionSplit.deleteMany({
+      // 2. Find all budget groups the user owns
+      const userBudgetGroups = await tx.budgetGroup.findMany({
         where: {
-          transaction: {
-            groupId
+          members: {
+            some: {
+              userId,
+              role: 'OWNER'
+            }
           }
-        }
+        },
+        select: { id: true }
       })
+      
+      console.log(`📊 Found ${userBudgetGroups.length} budget groups to delete`)
 
-      // Delete transactions
-      await prisma.transaction.deleteMany({
-        where: { groupId }
-      })
+      // 3. Delete all data from owned budget groups
+      for (const group of userBudgetGroups) {
+        const groupId = group.id
+        console.log(`🗑️ Deleting data for group: ${groupId}`)
 
-      // Delete money moves
-      await prisma.moneyMove.deleteMany({
-        where: { groupId }
-      })
+        // Delete messages first (no dependencies)
+        await tx.message.deleteMany({
+          where: { groupId }
+        })
 
-      // Delete categories (this will cascade to related data)
-      await prisma.category.deleteMany({
-        where: {
-          categoryGroup: {
-            groupId
+        // Delete transaction splits before transactions
+        await tx.transactionSplit.deleteMany({
+          where: {
+            transaction: {
+              groupId
+            }
           }
-        }
-      })
+        })
 
-      // Delete category groups
-      await prisma.categoryGroup.deleteMany({
-        where: { groupId }
-      })
+        // Delete transactions
+        await tx.transaction.deleteMany({
+          where: { groupId }
+        })
 
-      // Delete budget accounts
-      await prisma.budgetAccount.deleteMany({
-        where: { groupId }
-      })
+        // Delete money moves
+        await tx.moneyMove.deleteMany({
+          where: { groupId }
+        })
 
-      // Delete group members
-      await prisma.groupMember.deleteMany({
-        where: { groupId }
-      })
-    }
+        // Delete goals
+        await tx.goal.deleteMany({
+          where: { groupId }
+        })
 
-    // 6. Remove user from any budget groups they're a member of (but don't own)
-    await prisma.groupMember.deleteMany({
-      where: { userId }
-    })
+        // Delete budgets
+        await tx.budget.deleteMany({
+          where: { groupId }
+        })
 
-    // 7. Delete the budget groups the user owns
-    await prisma.budgetGroup.deleteMany({
-      where: {
-        id: {
-          in: userBudgetGroups.map(g => g.id)
-        }
+        // Delete categories before category groups
+        await tx.category.deleteMany({
+          where: {
+            categoryGroup: {
+              groupId
+            }
+          }
+        })
+
+        // Delete category groups
+        await tx.categoryGroup.deleteMany({
+          where: { groupId }
+        })
+
+        // Delete budget accounts
+        await tx.budgetAccount.deleteMany({
+          where: { groupId }
+        })
+
+        // Delete group invitations
+        await tx.groupInvitation.deleteMany({
+          where: { groupId }
+        })
+
+        // Delete group members
+        await tx.groupMember.deleteMany({
+          where: { groupId }
+        })
+
+        // Finally delete the group itself
+        await tx.budgetGroup.delete({
+          where: { id: groupId }
+        })
       }
-    })
 
-    // 8. Finally, delete the user account
-    await prisma.user.delete({
-      where: { id: userId }
+      // 4. Delete invitations sent by or accepted by this user
+      await tx.groupInvitation.deleteMany({
+        where: {
+          OR: [
+            { invitedBy: userId },
+            { acceptedBy: userId }
+          ]
+        }
+      })
+
+      // 5. Remove user from any groups they're a member of (but don't own)
+      await tx.groupMember.deleteMany({
+        where: { userId }
+      })
+
+      // 6. Delete user's messages
+      await tx.message.deleteMany({
+        where: { senderId: userId }
+      })
+
+      // 7. Finally, delete the user account itself
+      await tx.user.delete({
+        where: { id: userId }
+      })
+
+      console.log('✅ Account deletion completed successfully')
     })
 
     return NextResponse.json({ 
+      success: true,
       message: 'Account deleted successfully' 
     })
 
   } catch (error) {
-    console.error('Failed to delete account:', error)
+    console.error('❌ Failed to delete account:', error)
+    console.error('Stack trace:', error.stack)
+    
     return NextResponse.json({ 
-      error: 'Failed to delete account. Please try again or contact support.' 
+      success: false,
+      error: 'Failed to delete account. Please try again or contact support.',
+      details: error.message
     }, { status: 500 })
   }
 } 

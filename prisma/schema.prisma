@@ -41,6 +41,9 @@ model User {
   invitationsSent GroupInvitation[] @relation("InvitationsSent")
   invitationsAccepted GroupInvitation[] @relation("InvitationsAccepted")
 
+  // Messages sent by this user
+  messagesSent Message[] @relation("MessagesSent")
+
   @@map("users")
 }
 
@@ -142,6 +145,7 @@ model BudgetGroup {
   budgets        Budget[]
   moneyMoves     MoneyMove[]
   goals          Goal[]
+  messages       Message[]
 
   @@map("budget_groups")
 }
@@ -373,6 +377,29 @@ model MoneyMove {
   toCategory   Category @relation("ToCategory", fields: [toCategoryId], references: [id])
 
   @@map("money_moves")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isRead    Boolean  @default(false)
+
+  // Who sent the message
+  senderId  String
+  sender    User     @relation("MessagesSent", fields: [senderId], references: [id], onDelete: Cascade)
+
+  // Which group the message belongs to
+  groupId   String
+  group     BudgetGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  // Message thread/reply functionality (optional)
+  replyToId String?
+  replyTo   Message? @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies   Message[] @relation("MessageReplies")
+
+  @@map("messages")
 }
 
 // For offline sync

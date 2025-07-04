@@ -4,9 +4,9 @@ import nodemailer from 'nodemailer'
 const createTransporter = () => {
   // In production, you would use a real email service like SendGrid, AWS SES, etc.
   // For development, we'll use a test account or console logging
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' && process.env.SMTP_USER && process.env.SMTP_PASS) {
     // Production email service (configure with your email provider)
-    return nodemailer.createTransporter({
+    return nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.SMTP_PORT || '587'),
       secure: false, // true for 465, false for other ports
@@ -25,7 +25,10 @@ const createTransporter = () => {
           return
         }
 
-        const transporter = nodemailer.createTransporter({
+        console.log('📧 Using test email account for development')
+        console.log('Test account:', account.user)
+
+        const transporter = nodemailer.createTransport({
           host: account.smtp.host,
           port: account.smtp.port,
           secure: account.smtp.secure,
@@ -265,13 +268,17 @@ This invitation was sent to ${email}
     }
 
     const info = await transporter.sendMail(mailOptions)
-
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('Invitation email sent: %s', info.messageId)
-      console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info))
+    
+    console.log('✅ Invitation email sent successfully!')
+    console.log('Message ID:', info.messageId)
+    
+    // If using test account, show preview URL
+    if (nodemailer.getTestMessageUrl(info)) {
+      console.log('📧 Preview test email: %s', nodemailer.getTestMessageUrl(info))
+      console.log('🔗 You can view the sent email at the URL above')
     }
-
-    return { success: true, messageId: info.messageId }
+    
+    return { success: true, messageId: info.messageId, previewUrl: nodemailer.getTestMessageUrl(info) }
   } catch (error) {
     console.error('Invitation email sending error:', error)
     return { success: false, error: error.message }

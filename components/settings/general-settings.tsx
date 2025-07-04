@@ -178,26 +178,7 @@ export function GeneralSettings({ groupId, groupName, currentUserRole }: General
         </div>
       </Card>
 
-      {/* Danger Zone */}
-      {canEdit && (
-        <Card className="p-6 border-red-200">
-          <h4 className="text-lg font-medium text-red-900 mb-4">Danger Zone</h4>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between py-3">
-              <div>
-                <p className="font-medium text-red-900">Delete Budget</p>
-                <p className="text-sm text-red-600">Permanently delete this budget and all its data</p>
-              </div>
-              <Button variant="outline" className="text-red-600 border-red-300 hover:bg-red-50">
-                Delete Budget
-                <span className="ml-2 bg-red-100 text-red-500 px-2 py-1 rounded-full text-xs">
-                  Coming Soon
-                </span>
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
+
     </div>
   )
 } 

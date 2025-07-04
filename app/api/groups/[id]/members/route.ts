@@ -17,7 +17,7 @@ export async function GET(
     const groupId = params.id
 
     // Check if user is a member of this group
-    const userMembership = await prisma.userGroup.findFirst({
+    const userMembership = await prisma.groupMember.findFirst({
       where: {
         userId: session.user.id,
         groupId: groupId
@@ -29,7 +29,7 @@ export async function GET(
     }
 
     // Get all members of the group
-    const members = await prisma.userGroup.findMany({
+    const members = await prisma.groupMember.findMany({
       where: {
         groupId: groupId
       },
@@ -45,7 +45,7 @@ export async function GET(
       },
       orderBy: [
         { role: 'asc' }, // OWNER first, then EDITOR, then VIEWER
-        { createdAt: 'asc' }
+        { joinedAt: 'asc' }
       ]
     })
 
@@ -54,7 +54,7 @@ export async function GET(
       name: member.user.name,
       email: member.user.email,
       role: member.role,
-      joinedAt: member.createdAt.toISOString()
+      joinedAt: member.joinedAt.toISOString()
     }))
 
     return NextResponse.json({

@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { Settings, Users, CreditCard, Bell, Shield, Database } from 'lucide-react'
+import { Settings, Users, CreditCard, MessageCircle, Shield, Database } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { UserManagement } from './user-management'
 import { GeneralSettings } from './general-settings'
 import { AccountSettings } from './account-settings'
+import { TeamMessaging } from './team-messaging'
 
 interface BudgetSettingsProps {
   groupId: string
@@ -43,10 +44,10 @@ export function BudgetSettings({ groupId, groupName, currentUserRole, currentUse
     },
     {
       key: 'notifications' as TabKey,
-      label: 'Notifications',
-      icon: Bell,
-      description: 'Email and push notifications',
-      available: false
+      label: 'Messages',
+      icon: MessageCircle,
+      description: 'Team chat and messaging',
+      available: true
     },
     {
       key: 'security' as TabKey,
@@ -87,6 +88,13 @@ export function BudgetSettings({ groupId, groupName, currentUserRole, currentUse
           <AccountSettings
             groupId={groupId}
             currentUserRole={currentUserRole}
+          />
+        )
+      case 'notifications':
+        return (
+          <TeamMessaging
+            groupId={groupId}
+            currentUserId={currentUserId}
           />
         )
       default:

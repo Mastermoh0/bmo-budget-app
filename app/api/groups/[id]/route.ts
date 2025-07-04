@@ -19,7 +19,7 @@ export async function PATCH(
     const { name } = body
 
     // Check if user is an OWNER of this group
-    const userMembership = await prisma.userGroup.findFirst({
+    const userMembership = await prisma.groupMember.findFirst({
       where: {
         userId: session.user.id,
         groupId: groupId,

@@ -204,7 +204,7 @@ export function CategoryGroupEditor({ group, onUpdate, onDelete, onAdd, isExpand
     const totals = getGroupTotals(group.categories)
     return (
       <div className="px-6 py-3 bg-ynab-gray-50 hover:bg-ynab-gray-100 border-b border-ynab-gray-200">
-        <div className="grid gap-4 items-center" style={{ gridTemplateColumns: '40px 1fr 120px 120px 120px' }}>
+        <div className="grid gap-4 items-center" style={{ gridTemplateColumns: '50px 1fr 140px 140px 140px' }}>
           <div /> {/* Spacer for selection column */}
           <div className="flex items-center space-x-2">
             {isExpanded ? (
@@ -265,7 +265,7 @@ export function CategoryGroupEditor({ group, onUpdate, onDelete, onAdd, isExpand
     <div className="px-6 py-3 bg-ynab-gray-50 hover:bg-ynab-gray-100 border-b border-ynab-gray-200 group">
       <div 
         className="grid gap-4 items-center cursor-pointer"
-        style={{ gridTemplateColumns: '40px 1fr 120px 120px 120px' }}
+        style={{ gridTemplateColumns: '50px 1fr 140px 140px 140px' }}
         onClick={() => onToggle && onToggle(group.id)}
       >
         <div className="flex items-center space-x-2">

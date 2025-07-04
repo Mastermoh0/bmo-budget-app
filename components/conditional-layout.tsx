@@ -37,12 +37,12 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
 
   // Main app pages: layout with sidebar
   return (
-    <div className="flex h-screen bg-ynab-gray-50">
+    <div className="flex min-h-screen bg-ynab-gray-50">
       {/* Sidebar */}
       <BudgetSidebar />
       
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col">
         {children}
       </div>
     </div>

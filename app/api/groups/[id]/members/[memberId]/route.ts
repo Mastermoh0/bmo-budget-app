@@ -18,7 +18,7 @@ export async function DELETE(
     const memberIdToRemove = params.memberId
 
     // Check if current user is an OWNER of this group
-    const userMembership = await prisma.userGroup.findFirst({
+    const userMembership = await prisma.groupMember.findFirst({
       where: {
         userId: session.user.id,
         groupId: groupId,
@@ -33,7 +33,7 @@ export async function DELETE(
     }
 
     // Check if the member to remove exists in the group
-    const memberToRemove = await prisma.userGroup.findFirst({
+    const memberToRemove = await prisma.groupMember.findFirst({
       where: {
         userId: memberIdToRemove,
         groupId: groupId
@@ -63,7 +63,7 @@ export async function DELETE(
 
     // Check if this is the last owner
     if (memberToRemove.role === 'OWNER') {
-      const ownerCount = await prisma.userGroup.count({
+      const ownerCount = await prisma.groupMember.count({
         where: {
           groupId: groupId,
           role: 'OWNER'
@@ -78,7 +78,7 @@ export async function DELETE(
     }
 
     // Remove the member from the group
-    await prisma.userGroup.delete({
+    await prisma.groupMember.delete({
       where: {
         userId_groupId: {
           userId: memberIdToRemove,

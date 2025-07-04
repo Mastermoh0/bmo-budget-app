@@ -269,23 +269,36 @@ export default function ProfilePage() {
 
   const confirmDeleteAccount = async () => {
     setIsDeletingAccount(true)
+    setError('')
     
     try {
       const response = await fetch('/api/user/delete', {
         method: 'DELETE',
       })
 
-      if (response.ok) {
+      const data = await response.json()
+
+      if (response.ok && data.success) {
         // Account deleted successfully - sign out and redirect
         await signOut({
           callbackUrl: '/auth/signin?message=account-deleted'
         })
       } else {
-        const data = await response.json()
-        setError(data.error || 'Failed to delete account')
+        // Show detailed error message
+        const errorMessage = data.details 
+          ? `Failed to delete account: ${data.details}`
+          : data.error || 'Failed to delete account. Please try again.'
+        
+        setError(errorMessage)
         setShowDeleteAccountModal(false)
+        
+        // If it's an auth error, redirect to sign in
+        if (response.status === 401) {
+          router.push('/auth/signin')
+        }
       }
     } catch (error) {
+      console.error('Account deletion error:', error)
       setError('Network error. Please try again.')
       setShowDeleteAccountModal(false)
     } finally {
