@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { EyeOff, X, Trash2, Target, Edit3 } from 'lucide-react'
+import { EyeOff, X, Trash2, Target, Edit3, FolderOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export function ContextMenu({ 
@@ -13,6 +13,7 @@ export function ContextMenu({
   onSetTarget,
   onBulkEdit,
   onBulkDelete,
+  onMove,
   onClearSelections,
   itemName,
   itemType, // 'category' or 'group'
@@ -88,6 +89,26 @@ export function ContextMenu({
           >
             <Edit3 className="w-4 h-4 mr-2" />
             Edit Selected
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start px-3 py-2 h-auto text-sm font-normal hover:bg-gray-100"
+            onClick={() => handleAction(onMove)}
+          >
+            <FolderOpen className="w-4 h-4 mr-2" />
+            Move to Group
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start px-3 py-2 h-auto text-sm font-normal hover:bg-gray-100"
+            onClick={() => handleAction(onHide)}
+          >
+            <EyeOff className="w-4 h-4 mr-2" />
+            Hide Selected
           </Button>
           
           <div className="border-t border-gray-100 mt-1 pt-1">

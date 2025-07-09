@@ -75,66 +75,57 @@ export async function POST(request: Request) {
 
     console.log('User found:', user)
 
-    let budgetGroupId;
-    let userMembership;
-
-    if (planId) {
-      // Get specific budget group membership if planId is provided
-      userMembership = await prisma.groupMember.findFirst({
-        where: { 
-          userId: session.user.id,
-          groupId: planId
-        },
-        include: { group: true }
-      })
-      
-      if (!userMembership) {
-        return NextResponse.json({ error: 'Plan not found or access denied' }, { status: 404 })
-      }
-      budgetGroupId = userMembership.groupId
-    } else {
-      // Get the user's first budget group (backward compatibility)
-      userMembership = await prisma.groupMember.findFirst({
-        where: { userId: session.user.id },
-        include: { group: true }
-      })
-      budgetGroupId = userMembership?.groupId
-    }
-
-    console.log('User membership found:', !!userMembership)
-
     // Use a transaction to ensure data consistency
     const result = await prisma.$transaction(async (tx) => {
-      let groupId = budgetGroupId
+      let budgetGroupId;
 
-      // If user doesn't have a budget group, create one
-      if (!userMembership) {
-        console.log('Creating new budget group for user')
-        // Use the already validated user data
-        const userProfile = user
-
-        const budgetGroup = await tx.budgetGroup.create({
-          data: {
-            name: `${userProfile?.name || 'My'} Budget`,
-            description: 'Your personal budget',
-            members: {
-              create: {
-                userId: session.user.id,
-                role: 'OWNER'
-              }
-            }
+      if (planId) {
+        // Verify user has access to the specified plan
+        const membership = await tx.groupMember.findFirst({
+          where: { 
+            userId: session.user.id,
+            groupId: planId
           }
         })
-        groupId = budgetGroup.id
-        console.log('Created new budget group:', groupId)
+        
+        if (!membership) {
+          throw new Error('Plan not found or access denied')
+        }
+        budgetGroupId = planId
+      } else {
+        // Get or create a default budget group
+        const defaultGroup = await tx.groupMember.findFirst({
+          where: { userId: session.user.id },
+          select: { groupId: true }
+        })
+
+        if (defaultGroup) {
+          budgetGroupId = defaultGroup.groupId
+        } else {
+          // Create a new budget group
+          const newGroup = await tx.budgetGroup.create({
+            data: {
+              name: `${user.name || 'My'} Budget`,
+              description: 'Your personal budget',
+              members: {
+                create: {
+                  userId: session.user.id,
+                  role: 'OWNER'
+                }
+              }
+            }
+          })
+          budgetGroupId = newGroup.id
+        }
       }
 
-      console.log('Creating category group:', name, 'in budget group:', groupId)
+      console.log('Creating category group:', name, 'in budget group:', budgetGroupId)
 
+      // Create the category group
       const categoryGroup = await tx.categoryGroup.create({
         data: {
           name,
-          groupId,
+          groupId: budgetGroupId,
           sortOrder: 999, // Will be at the end by default
         },
         include: {
@@ -146,14 +137,19 @@ export async function POST(request: Request) {
       return categoryGroup
     })
 
-    const categoryGroup = result
-
-    return NextResponse.json(categoryGroup, { status: 201 })
+    return NextResponse.json(result, { status: 201 })
   } catch (error) {
     console.error('Failed to create category group - Detailed error:', error)
     console.error('Error name:', error.name)
     console.error('Error message:', error.message)
     console.error('Error stack:', error.stack)
+    
+    if (error.message === 'Plan not found or access denied') {
+      return NextResponse.json({ 
+        error: 'Plan not found or access denied',
+        details: 'You do not have access to this budget plan.'
+      }, { status: 403 })
+    }
     
     // Return more specific error information
     return NextResponse.json({ 

@@ -22,15 +22,34 @@ export function BudgetAmountInput({ category, month, onUpdate, categoryId, initi
 
   const evaluateExpression = (expression) => {
     try {
+      // Clean the expression
+      const cleanExpression = expression.trim()
+      
+      // If it's just a number, return it directly
+      if (/^-?\d*\.?\d+$/.test(cleanExpression)) {
+        return parseFloat(cleanExpression) || 0
+      }
+      
       // Replace display symbols with mathjs compatible ones
-      const mathExpression = expression
+      const mathExpression = cleanExpression
         .replace(/×/g, '*')
         .replace(/÷/g, '/')
+        .replace(/\s+/g, '') // Remove extra spaces
+      
+      // Evaluate the expression
       const result = evaluate(mathExpression)
-      return parseFloat(result.toFixed(2))
+      
+      // Ensure we return a valid number with 2 decimal places
+      const numResult = parseFloat(result)
+      return isNaN(numResult) ? 0 : parseFloat(numResult.toFixed(2))
     } catch (error) {
-      // Fallback to parseFloat if evaluation fails
-      return parseFloat(expression) || 0
+      console.warn('Math evaluation failed:', error)
+      // Try to extract just the numbers if it's a simple case
+      const numbers = expression.match(/-?\d*\.?\d+/g)
+      if (numbers && numbers.length === 1) {
+        return parseFloat(numbers[0]) || 0
+      }
+      return 0
     }
   }
 
@@ -115,13 +134,24 @@ export function BudgetAmountInput({ category, month, onUpdate, categoryId, initi
     return (
       <div className="relative">
         {/* Input with math toggle */}
-        <div className="relative flex items-center">
+        <div className="flex items-center gap-2">
+          {/* Calculator toggle - outside input on the left */}
+          <button
+            type="button"
+            className="text-ynab-blue hover:bg-ynab-blue/20 rounded p-2 bg-white border border-ynab-blue/30"
+            onClick={() => setShowMathKeypad(!showMathKeypad)}
+            onMouseDown={(e) => e.preventDefault()}
+            title="Calculator"
+          >
+            <Calculator size={16} />
+          </button>
+          
           <Input
             ref={inputRef}
             type="text"
             value={editAmount}
             onChange={handleInputChange}
-            className="w-full text-right text-sm pr-16 pl-8 border-2 border-ynab-blue"
+            className="flex-1 text-right text-sm px-3 border-2 border-ynab-blue"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleSave()
@@ -135,24 +165,15 @@ export function BudgetAmountInput({ category, month, onUpdate, categoryId, initi
             }}
           />
           
-          {/* Math keypad toggle */}
+          {/* History toggle - outside input on the right */}
           <button
             type="button"
-            className="absolute left-2 top-1/2 transform -translate-y-1/2 text-ynab-blue hover:bg-ynab-blue/10 rounded p-1"
-            onClick={() => setShowMathKeypad(!showMathKeypad)}
-            onMouseDown={(e) => e.preventDefault()}
-          >
-            <Calculator size={14} />
-          </button>
-          
-          {/* History toggle */}
-          <button
-            type="button"
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-ynab-blue hover:bg-ynab-blue/10 rounded p-1"
+            className="text-ynab-blue hover:bg-ynab-blue/20 rounded p-2 bg-white border border-ynab-blue/30"
             onClick={() => setShowHistory(!showHistory)}
             onMouseDown={(e) => e.preventDefault()}
+            title="Calculation History"
           >
-            <Clock size={14} />
+            <Clock size={16} />
           </button>
         </div>
 
@@ -195,7 +216,7 @@ export function BudgetAmountInput({ category, month, onUpdate, categoryId, initi
         {/* History Popup */}
         {showHistory && (
           <div className="math-popup absolute z-50 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 min-w-[280px]">
-            <div className="text-sm font-semibold text-gray-900 mb-3">Moves</div>
+            <div className="text-sm font-semibold text-gray-900 mb-3">Calculation History</div>
             
             {calculationHistory.length === 0 ? (
               <div className="text-xs text-gray-500 text-center py-4">No calculation history</div>
@@ -203,8 +224,8 @@ export function BudgetAmountInput({ category, month, onUpdate, categoryId, initi
               <div className="space-y-1">
                 <div className="grid grid-cols-3 gap-2 text-xs font-medium text-gray-500 border-b pb-1">
                   <div>DATE</div>
-                  <div>MOVE</div>
-                  <div className="text-right">AMOUNT</div>
+                  <div>CALCULATION</div>
+                  <div className="text-right">RESULT</div>
                 </div>
                 {calculationHistory.map((item, index) => (
                   <div

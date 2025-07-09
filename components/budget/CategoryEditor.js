@@ -30,21 +30,8 @@ export function CategoryEditor({ category, groupId, onUpdate, onDelete, onAdd, s
   }
 
   const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete "${category.name}"?`)) {
-      return
-    }
-    
-    try {
-      const response = await fetch(`/api/categories/${groupId}/categories/${category.id}`, {
-        method: 'DELETE',
-      })
-      
-      if (response.ok) {
-        onDelete(category.id)
-      }
-    } catch (error) {
-      console.error('Failed to delete category:', error)
-    }
+    // Call onDelete directly - confirmation is handled by parent component
+    onDelete(category.id)
   }
 
   const handleAddCategory = async () => {
@@ -121,8 +108,12 @@ export function CategoryEditor({ category, groupId, onUpdate, onDelete, onAdd, s
         <div className="px-6 py-2">
           <div className="flex items-center justify-center">
             <button
-              onClick={() => setIsAdding(true)}
-              className="w-8 h-8 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover/category-list:opacity-100 transition-all duration-200 hover:scale-110"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setIsAdding(true)
+              }}
+              className="w-8 h-8 bg-blue-500 hover:bg-blue-700 text-white rounded-full flex items-center justify-center opacity-0 group-hover/category-list:opacity-100 transition-all duration-200 hover:scale-110 shadow-lg z-10 relative"
               title="Add Category"
             >
               <Plus className="w-4 h-4" />
@@ -134,8 +125,12 @@ export function CategoryEditor({ category, groupId, onUpdate, onDelete, onAdd, s
       return (
         <div className="px-6 py-2">
           <button
-            onClick={() => setIsAdding(true)}
-            className="flex items-center space-x-2 text-ynab-blue hover:text-ynab-blue text-sm"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setIsAdding(true)
+            }}
+            className="flex items-center space-x-2 text-black border border-black px-3 py-1 rounded hover:bg-black hover:text-white text-sm font-medium transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span>Add Category</span>

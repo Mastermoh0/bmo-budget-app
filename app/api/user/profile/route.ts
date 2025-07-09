@@ -44,8 +44,11 @@ export async function GET() {
 
     // If user doesn't have a budget group, create one automatically
     let userWithBudgetGroup = user
+    console.log('🔍 Profile API: User memberships count:', user.memberships.length)
+    console.log('📋 Profile API: User memberships:', JSON.stringify(user.memberships, null, 2))
+    
     if (user.memberships.length === 0) {
-      console.log('User has no budget group, creating one automatically')
+      console.log('⚠️ Profile API: User has no budget group, creating one automatically')
       
       const budgetGroup = await prisma.budgetGroup.create({
         data: {
@@ -79,7 +82,9 @@ export async function GET() {
         }]
       }
       
-      console.log('Created budget group:', budgetGroup.id)
+      console.log('✅ Profile API: Created budget group:', budgetGroup.id)
+    } else {
+      console.log('✅ Profile API: User has existing budget groups')
     }
 
     // Format the response to include budget groups

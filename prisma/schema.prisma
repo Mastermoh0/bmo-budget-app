@@ -146,6 +146,7 @@ model BudgetGroup {
   moneyMoves     MoneyMove[]
   goals          Goal[]
   messages       Message[]
+  notes          Note[]
 
   @@map("budget_groups")
 }
@@ -219,6 +220,7 @@ model CategoryGroup {
 
   categories Category[]
   goals      Goal[]
+  notes      Note[]
 
   @@map("category_groups")
 }
@@ -239,6 +241,7 @@ model Category {
   transactions Transaction[]
   budgets      Budget[]
   goals        Goal[]
+  notes        Note[]
   transactionSplits TransactionSplit[]
   
   // Money moves - need different relation names to avoid ambiguity
@@ -358,6 +361,24 @@ enum GoalType {
   YEARLY_FUNDING // Save $X each year
   PERCENT_OF_INCOME // Save X% of income
   CUSTOM // Custom goal with flexible parameters
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  groupId String
+  group   BudgetGroup  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  categoryGroupId String?
+  categoryGroup   CategoryGroup? @relation(fields: [categoryGroupId], references: [id], onDelete: Cascade)
+
+  @@map("notes")
 }
 
 model MoneyMove {

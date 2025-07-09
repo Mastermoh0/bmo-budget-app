@@ -14,6 +14,8 @@ export function CategoryGroupEditor({ group, onUpdate, onDelete, onAdd, isExpand
   const [editName, setEditName] = useState(group?.name || '')
   const [isAdding, setIsAdding] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
+  const [isAddingCategory, setIsAddingCategory] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
 
   // Handle authentication/user errors by redirecting to sign-in
   const handleAuthError = async (error) => {
@@ -58,34 +60,8 @@ export function CategoryGroupEditor({ group, onUpdate, onDelete, onAdd, isExpand
   }
 
   const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete "${group.name}" and all its categories?`)) {
-      return
-    }
-    
-    try {
-      const response = await fetch(`/api/categories/${group.id}`, {
-        method: 'DELETE',
-      })
-      
-      if (response.ok) {
-        onDelete(group.id)
-      } else {
-        const errorData = await response.json()
-        
-        // Check if it's an authentication/user error
-        if (response.status === 401 || 
-            errorData.error?.includes('not found in database') ||
-            errorData.error?.includes('User not found') ||
-            errorData.error?.includes('Unauthorized')) {
-          await handleAuthError(errorData.error)
-          return
-        }
-        
-        console.error('Failed to delete group:', errorData)
-      }
-    } catch (error) {
-      console.error('Failed to delete group:', error)
-    }
+    // Call onDelete directly - confirmation is handled by parent component
+    onDelete(group.id)
   }
 
   const handleAddGroup = async () => {
@@ -131,6 +107,34 @@ export function CategoryGroupEditor({ group, onUpdate, onDelete, onAdd, isExpand
   const handleCancel = () => {
     setIsEditing(false)
     setEditName(group?.name || '')
+  }
+
+  const handleAddNewCategory = async () => {
+    if (!newCategoryName.trim() || !group) return
+    
+    try {
+      const response = await fetch(`/api/categories/${group.id}/categories`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCategoryName.trim() }),
+      })
+      
+      if (response.ok) {
+        const newCategory = await response.json()
+        if (onAddCategory) {
+          onAddCategory(group.id, newCategory)
+        }
+        setNewCategoryName('')
+        setIsAddingCategory(false)
+      }
+    } catch (error) {
+      console.error('Failed to create category:', error)
+    }
+  }
+
+  const handleCancelAddCategory = () => {
+    setIsAddingCategory(false)
+    setNewCategoryName('')
   }
 
   const getGroupTotals = (categories) => {
@@ -204,8 +208,7 @@ export function CategoryGroupEditor({ group, onUpdate, onDelete, onAdd, isExpand
     const totals = getGroupTotals(group.categories)
     return (
       <div className="px-6 py-3 bg-ynab-gray-50 hover:bg-ynab-gray-100 border-b border-ynab-gray-200">
-        <div className="grid gap-4 items-center" style={{ gridTemplateColumns: '50px 1fr 140px 140px 140px' }}>
-          <div /> {/* Spacer for selection column */}
+        <div className="grid grid-cols-4 gap-4 items-center">
           <div className="flex items-center space-x-2">
             {isExpanded ? (
               <ChevronDown className="w-4 h-4 text-ynab-gray-600" />
@@ -264,35 +267,9 @@ export function CategoryGroupEditor({ group, onUpdate, onDelete, onAdd, isExpand
   return (
     <div className="px-6 py-3 bg-ynab-gray-50 hover:bg-ynab-gray-100 border-b border-ynab-gray-200 group">
       <div 
-        className="grid gap-4 items-center cursor-pointer"
-        style={{ gridTemplateColumns: '50px 1fr 140px 140px 140px' }}
+        className="grid grid-cols-4 gap-4 items-center cursor-pointer"
         onClick={() => onToggle && onToggle(group.id)}
       >
-        <div className="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            className="rounded text-blue-600"
-            checked={isSelected || false}
-            onChange={(e) => {
-              e.stopPropagation()
-              if (onToggleSelection) {
-                onToggleSelection()
-              }
-            }}
-          />
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              if (onSelectAll) {
-                onSelectAll()
-              }
-            }}
-            className="text-xs text-blue-600 hover:text-blue-700"
-            title="Select all categories in this group"
-          >
-            All
-          </button>
-        </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             {isExpanded ? (
@@ -301,16 +278,15 @@ export function CategoryGroupEditor({ group, onUpdate, onDelete, onAdd, isExpand
               <ChevronRight className="w-4 h-4 text-ynab-gray-600" />
             )}
             <span className="font-medium text-ynab-gray-800">{group.name}</span>
-            {/* Add Category button - Teal circle with plus (green-blue mix) */}
+            {/* Add Category button - Black outline circle with plus */}
             <Button
               onClick={(e) => {
+                e.preventDefault()
                 e.stopPropagation()
-                if (onAddCategory) {
-                  onAddCategory()
-                }
+                setIsAddingCategory(true)
               }}
               size="icon"
-              className="w-6 h-6 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 shadow-lg border border-white"
+              className="w-6 h-6 bg-white hover:bg-black text-black hover:text-white rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 shadow-lg border border-black z-10 relative"
               title="Add Category"
             >
               <Plus className="w-4 h-4 font-bold" />
@@ -356,6 +332,47 @@ export function CategoryGroupEditor({ group, onUpdate, onDelete, onAdd, isExpand
           {formatCurrency(totals.available)}
         </div>
       </div>
+      
+      {/* Add Category Form */}
+      {isAddingCategory && (
+        <div className="px-6 py-4 bg-blue-50 border-b border-blue-200">
+          <div className="max-w-md">
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Add Category</h3>
+            <div className="space-y-3">
+              <Input
+                type="text"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="Category name"
+                className="w-full"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAddNewCategory()
+                  if (e.key === 'Escape') handleCancelAddCategory()
+                }}
+              />
+              <div className="flex items-center space-x-2">
+                <Button
+                  onClick={handleCancelAddCategory}
+                  variant="outline"
+                  size="sm"
+                  className="text-gray-600 hover:text-gray-800"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleAddNewCategory}
+                  disabled={!newCategoryName.trim()}
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Confirm
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 } 

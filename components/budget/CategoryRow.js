@@ -30,21 +30,8 @@ export function CategoryRow({ category, groupId, month, onUpdate, onDelete, onBu
   }
 
   const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete "${category.name}"?`)) {
-      return
-    }
-    
-    try {
-      const response = await fetch(`/api/categories/${groupId}/categories/${category.id}`, {
-        method: 'DELETE',
-      })
-      
-      if (response.ok) {
-        onDelete(category.id)
-      }
-    } catch (error) {
-      console.error('Failed to delete category:', error)
-    }
+    // Call onDelete directly - confirmation is handled by parent component
+    onDelete(category.id)
   }
 
   const handleCancel = () => {

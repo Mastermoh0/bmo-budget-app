@@ -69,7 +69,7 @@ export function BudgetSidebar() {
   const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0)
 
   return (
-    <div className="w-64 bg-white border-r border-ynab-gray-200 flex flex-col">
+    <div className="fixed left-0 top-0 w-64 h-screen bg-white border-r border-ynab-gray-200 flex flex-col z-20">
       {/* Logo */}
       <div className="p-4 border-b border-ynab-gray-200">
         <div className="flex items-center space-x-2">
@@ -84,7 +84,7 @@ export function BudgetSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         {navigation.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
@@ -131,7 +131,7 @@ export function BudgetSidebar() {
         </button>
 
         {showAccounts && (
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-64 overflow-y-auto">
             {loading ? (
               <div className="text-sm text-ynab-gray-500 p-2">Loading accounts...</div>
             ) : (

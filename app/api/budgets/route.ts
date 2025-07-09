@@ -58,6 +58,9 @@ export async function GET(request: Request) {
     }
 
     // Get all category groups with categories and their budgets for the specified month
+    console.log('🔍 Budgets API: Looking for category groups with groupId:', userMembership.groupId)
+    console.log('🔍 Budgets API: User membership:', JSON.stringify(userMembership, null, 2))
+    
     const categoryGroups = await prisma.categoryGroup.findMany({
       where: {
         groupId: userMembership.groupId,
@@ -76,6 +79,9 @@ export async function GET(request: Request) {
       },
       orderBy: { sortOrder: 'asc' },
     })
+    
+    console.log('📊 Budgets API: Found category groups:', categoryGroups.length)
+    console.log('📋 Budgets API: Category groups detail:', JSON.stringify(categoryGroups, null, 2))
 
     // Calculate total account balances (what user actually has available to budget)
     const accounts = await prisma.budgetAccount.findMany({

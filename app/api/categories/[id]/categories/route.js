@@ -24,7 +24,15 @@ export async function POST(request, { params }) {
       },
     })
 
-    return NextResponse.json(category, { status: 201 })
+    // Return category with default budget values to prevent NaN issues
+    const categoryWithDefaults = {
+      ...category,
+      budgeted: 0,
+      activity: 0,
+      available: 0
+    }
+
+    return NextResponse.json(categoryWithDefaults, { status: 201 })
   } catch (error) {
     console.error('Failed to create category:', error)
     return NextResponse.json({ error: 'Failed to create category' }, { status: 500 })
