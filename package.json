@@ -38,6 +38,7 @@
     "crypto-js": "^4.2.0",
     "date-fns": "^3.0.6",
     "dexie": "^3.2.4",
+    "dotenv": "^17.2.0",
     "framer-motion": "^10.16.16",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.302.0",

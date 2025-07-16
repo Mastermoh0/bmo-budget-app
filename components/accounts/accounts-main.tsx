@@ -243,12 +243,63 @@ export function AccountsMain() {
       </div>
 
       <div className="p-6 space-y-8">
+        {/* Account Summary */}
+        <section>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Account Summary</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="p-4 bg-green-50 border-green-200">
+              <div className="text-center">
+                <p className="text-sm text-green-600 font-medium mb-1">Total Assets</p>
+                <p className="text-2xl font-bold text-green-700">
+                  {formatCurrency(accounts.filter(a => a.balance > 0).reduce((sum, a) => sum + a.balance, 0))}
+                </p>
+                <p className="text-xs text-green-600 mt-1">
+                  {accounts.filter(a => a.balance > 0).length} accounts
+                </p>
+              </div>
+            </Card>
+            <Card className="p-4 bg-red-50 border-red-200">
+              <div className="text-center">
+                <p className="text-sm text-red-600 font-medium mb-1">Total Liabilities</p>
+                <p className="text-2xl font-bold text-red-700">
+                  {formatCurrency(Math.abs(accounts.filter(a => a.balance < 0).reduce((sum, a) => sum + a.balance, 0)))}
+                </p>
+                <p className="text-xs text-red-600 mt-1">
+                  {accounts.filter(a => a.balance < 0).length} accounts
+                </p>
+              </div>
+            </Card>
+            <Card className="p-4 bg-blue-50 border-blue-200">
+              <div className="text-center">
+                <p className="text-sm text-blue-600 font-medium mb-1">Net Worth</p>
+                <p className="text-2xl font-bold text-blue-700">
+                  {formatCurrency(accounts.reduce((sum, a) => sum + a.balance, 0))}
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  {accounts.length} total accounts
+                </p>
+              </div>
+            </Card>
+          </div>
+        </section>
+
+        {/* Divider */}
+        <div className="border-t border-gray-200"></div>
+
         {/* Budget Accounts */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Budget Accounts</h2>
-            <div className="text-lg font-bold text-green-600">
-              {formatCurrency(totalBudgetBalance)}
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Budget Accounts</h2>
+              <p className="text-sm text-gray-600">Accounts included in your budget</p>
+            </div>
+            <div className="text-right">
+              <div className="text-lg font-bold text-green-600">
+                {formatCurrency(totalBudgetBalance)}
+              </div>
+              <div className="text-sm text-gray-500">
+                {budgetAccounts.length} accounts
+              </div>
             </div>
           </div>
           
@@ -274,9 +325,17 @@ export function AccountsMain() {
         {trackingAccounts.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Tracking Accounts</h2>
-              <div className="text-lg font-bold text-blue-600">
-                {formatCurrency(totalTrackingBalance)}
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Tracking Accounts</h2>
+                <p className="text-sm text-gray-600">Accounts for tracking outside your budget</p>
+              </div>
+              <div className="text-right">
+                <div className="text-lg font-bold text-blue-600">
+                  {formatCurrency(totalTrackingBalance)}
+                </div>
+                <div className="text-sm text-gray-500">
+                  {trackingAccounts.length} accounts
+                </div>
               </div>
             </div>
             
@@ -296,7 +355,17 @@ export function AccountsMain() {
         {/* Closed Accounts */}
         {closedAccounts.length > 0 && (
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Closed Accounts</h2>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Closed Accounts</h2>
+                <p className="text-sm text-gray-600">Accounts that are no longer active</p>
+              </div>
+              <div className="text-right">
+                <div className="text-sm text-gray-500">
+                  {closedAccounts.length} accounts
+                </div>
+              </div>
+            </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {closedAccounts.map((account) => (
                 <AccountCard

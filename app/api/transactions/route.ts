@@ -90,7 +90,7 @@ async function updateAccountBalances(fromAccountId: string, toAccountId: string 
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions)
     
@@ -98,11 +98,31 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get the user's budget group
-    const userMembership = await prisma.groupMember.findFirst({
-      where: { userId: session.user.id },
-      include: { group: true }
-    })
+    const { searchParams } = new URL(request.url)
+    const planId = searchParams.get('planId')
+
+    let userMembership;
+
+    if (planId) {
+      // Get specific budget group membership if planId is provided
+      userMembership = await prisma.groupMember.findFirst({
+        where: { 
+          userId: session.user.id,
+          groupId: planId
+        },
+        include: { group: true }
+      })
+      
+      if (!userMembership) {
+        return NextResponse.json({ error: 'Plan not found or access denied' }, { status: 404 })
+      }
+    } else {
+      // Get the user's first budget group (backward compatibility)
+      userMembership = await prisma.groupMember.findFirst({
+        where: { userId: session.user.id },
+        include: { group: true }
+      })
+    }
 
     if (!userMembership) {
       return NextResponse.json([]) // Return empty array if no budget group
@@ -160,16 +180,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get the user's budget group
-    const userMembership = await prisma.groupMember.findFirst({
-      where: { userId: session.user.id },
-      include: { group: true }
-    })
-
-    if (!userMembership) {
-      return NextResponse.json({ error: 'No budget group found' }, { status: 404 })
-    }
-
     const body = await request.json()
     const { 
       date,
@@ -180,8 +190,36 @@ export async function POST(request: Request) {
       toAccountId,
       categoryId,
       cleared = 'UNCLEARED',
-      flagColor
+      flagColor,
+      planId // Add planId parameter
     } = body
+
+    let userMembership;
+
+    if (planId) {
+      // Verify user has access to the specified plan
+      userMembership = await prisma.groupMember.findFirst({
+        where: { 
+          userId: session.user.id,
+          groupId: planId
+        },
+        include: { group: true }
+      })
+      
+      if (!userMembership) {
+        return NextResponse.json({ error: 'Plan not found or access denied' }, { status: 403 })
+      }
+    } else {
+      // Get the user's first budget group (backward compatibility)
+      userMembership = await prisma.groupMember.findFirst({
+        where: { userId: session.user.id },
+        include: { group: true }
+      })
+    }
+
+    if (!userMembership) {
+      return NextResponse.json({ error: 'No budget group found' }, { status: 404 })
+    }
 
     // Validate required fields
     if (!date || !amount || !fromAccountId) {

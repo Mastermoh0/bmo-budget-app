@@ -131,7 +131,7 @@ export async function POST(request: Request) {
     })
 
     // Send invitation email
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3001'
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
     const emailResult = await sendInvitationEmail(
       email,
       currentUser?.name || 'Someone',

@@ -14,16 +14,33 @@ export async function PUT(request, { params }) {
 
     const { categoryId } = params
     const body = await request.json()
-    const { name, budgeted, month } = body
+    const { name, budgeted, month, isHidden, planId } = body
 
-    // Get user's group membership to ensure access
-    const userMembership = await prisma.groupMember.findFirst({
-      where: { userId: session.user.id },
-      include: { group: true }
-    })
+    let userMembership;
 
-    if (!userMembership) {
-      return NextResponse.json({ error: 'No budget group found' }, { status: 404 })
+    if (planId) {
+      // Get specific group membership if planId is provided
+      userMembership = await prisma.groupMember.findFirst({
+        where: { 
+          userId: session.user.id,
+          groupId: planId
+        },
+        include: { group: true }
+      })
+      
+      if (!userMembership) {
+        return NextResponse.json({ error: 'Plan not found or access denied' }, { status: 403 })
+      }
+    } else {
+      // Fall back to first group membership (backward compatibility)
+      userMembership = await prisma.groupMember.findFirst({
+        where: { userId: session.user.id },
+        include: { group: true }
+      })
+
+      if (!userMembership) {
+        return NextResponse.json({ error: 'No budget group found' }, { status: 404 })
+      }
     }
 
     // Verify category belongs to user's group
@@ -41,14 +58,39 @@ export async function PUT(request, { params }) {
     })
 
     if (!category) {
-      return NextResponse.json({ error: 'Category not found' }, { status: 404 })
+      // Provide more detailed error information
+      const categoryExists = await prisma.category.findUnique({
+        where: { id: categoryId },
+        include: { categoryGroup: true }
+      })
+      
+      if (!categoryExists) {
+        return NextResponse.json({ 
+          error: `Category with ID ${categoryId} does not exist in the database`,
+          details: { categoryId, planId: userMembership.groupId }
+        }, { status: 404 })
+      } else {
+        return NextResponse.json({ 
+          error: `Category ${categoryId} exists but belongs to plan ${categoryExists.categoryGroup.groupId}, not plan ${userMembership.groupId}`,
+          details: { 
+            categoryId, 
+            requestedPlanId: userMembership.groupId,
+            actualPlanId: categoryExists.categoryGroup.groupId,
+            categoryName: categoryExists.name
+          }
+        }, { status: 404 })
+      }
     }
 
-    // If updating name
-    if (name !== undefined) {
+    // If updating name or hiding/showing category
+    if (name !== undefined || isHidden !== undefined) {
+      const updateData = {}
+      if (name !== undefined) updateData.name = name
+      if (isHidden !== undefined) updateData.isHidden = isHidden
+
       const updatedCategory = await prisma.category.update({
         where: { id: categoryId },
-        data: { name },
+        data: updateData,
         include: {
           budgets: true,
         }

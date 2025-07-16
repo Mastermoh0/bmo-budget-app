@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Save, Edit3, Calendar, DollarSign } from 'lucide-react'
+import { Save, Edit3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
@@ -139,44 +139,7 @@ export function GeneralSettings({ groupId, groupName, currentUserRole }: General
         )}
       </Card>
 
-      {/* Budget Preferences */}
-      <Card className="p-6">
-        <h4 className="text-lg font-medium text-gray-900 mb-4">Budget Preferences</h4>
-        
-        <div className="space-y-4">
-          <div className="flex items-center justify-between py-3 border-b border-gray-200">
-            <div className="flex items-center space-x-3">
-              <Calendar className="w-5 h-5 text-gray-400" />
-              <div>
-                <p className="font-medium text-gray-900">Budget Period</p>
-                <p className="text-sm text-gray-600">How often your budget resets</p>
-              </div>
-            </div>
-            <div className="text-sm text-gray-500">
-              Monthly
-              <span className="ml-2 bg-gray-100 text-gray-500 px-2 py-1 rounded-full text-xs">
-                Coming Soon
-              </span>
-            </div>
-          </div>
 
-          <div className="flex items-center justify-between py-3 border-b border-gray-200">
-            <div className="flex items-center space-x-3">
-              <DollarSign className="w-5 h-5 text-gray-400" />
-              <div>
-                <p className="font-medium text-gray-900">Currency</p>
-                <p className="text-sm text-gray-600">Default currency for transactions</p>
-              </div>
-            </div>
-            <div className="text-sm text-gray-500">
-              USD ($)
-              <span className="ml-2 bg-gray-100 text-gray-500 px-2 py-1 rounded-full text-xs">
-                Coming Soon
-              </span>
-            </div>
-          </div>
-        </div>
-      </Card>
 
 
     </div>

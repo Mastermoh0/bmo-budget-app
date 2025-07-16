@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { X, StickyNote, Plus, Edit, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 
 interface Note {
   id: string
@@ -35,6 +36,18 @@ export function NotesPanel({ isVisible, onClose, selectedCategories, selectedGro
   const [newNoteContent, setNewNoteContent] = useState('')
   const [editNoteContent, setEditNoteContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [confirmationDialog, setConfirmationDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    onConfirm: () => void
+    noteToDelete?: Note
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  })
 
   // Fetch notes for this plan
   useEffect(() => {
@@ -141,9 +154,22 @@ export function NotesPanel({ isVisible, onClose, selectedCategories, selectedGro
     }
   }
 
-  const handleDeleteNote = async (noteId: string) => {
-    if (!confirm('Are you sure you want to delete this note?')) return
-    
+  const showDeleteConfirmation = (note: Note) => {
+    const categoryName = note.category?.name || note.categoryGroup?.name || 'Note'
+    setConfirmationDialog({
+      isOpen: true,
+      title: 'Delete Note',
+      message: `Are you sure you want to delete this note for "${categoryName}"? This action cannot be undone.`,
+      onConfirm: () => confirmDeleteNote(note.id),
+      noteToDelete: note
+    })
+  }
+
+  const closeConfirmationDialog = () => {
+    setConfirmationDialog(prev => ({ ...prev, isOpen: false }))
+  }
+
+  const confirmDeleteNote = async (noteId: string) => {
     try {
       const response = await fetch(`/api/notes/${noteId}`, {
         method: 'DELETE',
@@ -151,6 +177,7 @@ export function NotesPanel({ isVisible, onClose, selectedCategories, selectedGro
 
       if (response.ok) {
         await fetchNotes()
+        closeConfirmationDialog()
       } else {
         const errorData = await response.json()
         alert(`Failed to delete note: ${errorData.error || 'Unknown error'}`)
@@ -289,7 +316,7 @@ export function NotesPanel({ isVisible, onClose, selectedCategories, selectedGro
                       <Edit className="w-3 h-3" />
                     </Button>
                     <Button
-                      onClick={() => handleDeleteNote(note.id)}
+                      onClick={() => showDeleteConfirmation(note)}
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6 text-red-500 hover:text-red-700"
@@ -337,6 +364,18 @@ export function NotesPanel({ isVisible, onClose, selectedCategories, selectedGro
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmationDialog.isOpen}
+        onClose={closeConfirmationDialog}
+        onConfirm={confirmationDialog.onConfirm}
+        title={confirmationDialog.title}
+        message={confirmationDialog.message}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </div>
   )
 } 

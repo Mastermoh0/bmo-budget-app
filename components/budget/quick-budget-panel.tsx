@@ -152,6 +152,7 @@ interface QuickBudgetPanelProps {
   budgetData?: any
   onApplyBudget?: (assignments: { categoryId: string, amount: number }[]) => void
   availableToAssign?: number
+  onRefreshData?: () => void // Add direct refresh callback
 }
 
 export function QuickBudgetPanel({ 
@@ -159,7 +160,8 @@ export function QuickBudgetPanel({
   onToggle, 
   budgetData, 
   onApplyBudget,
-  availableToAssign = 0 
+  availableToAssign = 0,
+  onRefreshData
 }: QuickBudgetPanelProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [customIncome, setCustomIncome] = useState<number>(availableToAssign)
@@ -172,10 +174,21 @@ export function QuickBudgetPanel({
 
   // Calculate template preview
   const calculatePreview = (templateId: string, income: number) => {
-    if (!budgetData || !budgetData.categoryGroups) return []
+    if (!budgetData || !budgetData.categoryGroups) {
+      console.log('❌ Quick Budget: No budget data available for preview calculation')
+      return []
+    }
+    
+    console.log('🔍 Quick Budget: Budget data for preview:', {
+      categoryGroupsCount: budgetData.categoryGroups?.length,
+      planInfo: budgetData.categoryGroups?.[0]?.groupId || 'unknown'
+    })
     
     const template = budgetTemplates.find(t => t.id === templateId)
-    if (!template) return []
+    if (!template) {
+      console.log('❌ Quick Budget: Template not found:', templateId)
+      return []
+    }
     
     // Categorize all categories
     const categorizedCategories: { [key: string]: { categoryId: string, categoryName: string, currentAmount: number }[] } = {
@@ -188,8 +201,10 @@ export function QuickBudgetPanel({
     }
     
     budgetData.categoryGroups.forEach((group: any) => {
+      console.log(`🔍 Quick Budget: Processing group "${group.name}" (ID: ${group.id})`)
       group.categories.forEach((category: any) => {
         const type = classifyCategory(category.name)
+        console.log(`📝 Quick Budget: Category "${category.name}" (ID: ${category.id}) classified as "${type}"`)
         categorizedCategories[type].push({
           categoryId: category.id,
           categoryName: category.name,
@@ -237,6 +252,11 @@ export function QuickBudgetPanel({
   const handleApplyTemplate = async () => {
     if (!selectedTemplate || !onApplyBudget) return
     
+    if (!budgetData || !budgetData.categoryGroups || budgetData.categoryGroups.length === 0) {
+      alert('No budget data available. Please wait for data to load or refresh the page.')
+      return
+    }
+    
     setIsLoading(true)
     try {
       const assignments = preview.map(item => ({
@@ -246,11 +266,23 @@ export function QuickBudgetPanel({
       
       await onApplyBudget(assignments)
       
-      // Reset state
+      // Reset state and close panel on success
       setSelectedTemplate(null)
       setPreview([])
+      
+      // Trigger immediate data refresh
+      console.log('🔄 Quick Budget: Triggering immediate data refresh')
+      if (onRefreshData) {
+        onRefreshData()
+      }
+      
+      // Close panel on success (no annoying alert)
+      if (onToggle) {
+        onToggle() // Close the quick budget panel
+      }
     } catch (error) {
       console.error('Failed to apply budget template:', error)
+      // Error message is already shown by the parent handleApplyBudget function
     } finally {
       setIsLoading(false)
     }
@@ -269,18 +301,11 @@ export function QuickBudgetPanel({
   }
 
   if (!isOpen) {
-    return (
-      <button
-        onClick={onToggle}
-        className="fixed right-4 top-1/2 transform -translate-y-1/2 bg-ynab-blue text-white p-3 rounded-l-lg shadow-lg hover:bg-ynab-blue/90 transition-colors z-10"
-      >
-        <Zap className="w-5 h-5" />
-      </button>
-    )
+    return null
   }
 
   return (
-    <div className="w-96 bg-white border-l border-ynab-gray-200 flex flex-col max-h-screen">
+    <div className="fixed right-0 top-0 w-96 bg-white border-l border-ynab-gray-200 flex flex-col h-screen shadow-lg z-20">
       {/* Header */}
       <div className="p-4 border-b border-ynab-gray-200 flex items-center justify-between">
         <div className="flex items-center space-x-2">
@@ -297,6 +322,17 @@ export function QuickBudgetPanel({
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {/* Loading/No Data State */}
+        {(!budgetData || !budgetData.categoryGroups || budgetData.categoryGroups.length === 0) && (
+          <div className="text-center py-8">
+            <div className="text-ynab-gray-500 mb-2">Loading budget data...</div>
+            <div className="text-xs text-ynab-gray-400">Please wait while we fetch your category information</div>
+          </div>
+        )}
+        
+        {/* Main Content - Only show when data is available */}
+        {budgetData && budgetData.categoryGroups && budgetData.categoryGroups.length > 0 && (
+          <>
         {/* Income Input */}
         <div>
           <h4 className="font-medium text-ynab-gray-800 mb-2 flex items-center space-x-2">
@@ -388,10 +424,12 @@ export function QuickBudgetPanel({
             </div>
           </div>
         )}
+          </>
+        )}
       </div>
 
       {/* Apply Button */}
-      {selectedTemplate && preview.length > 0 && (
+      {selectedTemplate && preview.length > 0 && budgetData && budgetData.categoryGroups && budgetData.categoryGroups.length > 0 && (
         <div className="p-4 border-t border-ynab-gray-200">
           <button 
             onClick={handleApplyTemplate}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Target, Calendar, DollarSign, Clock, Repeat } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ interface TargetCreationFormProps {
   selectedCategories: Set<string>
   selectedGroups: Set<string>
   isSubmitting?: boolean
+  editingGoal?: any | null
 }
 
 type TargetType = 'WEEKLY_FUNDING' | 'MONTHLY_FUNDING' | 'YEARLY_FUNDING' | 'TARGET_BALANCE_BY_DATE' | 'CUSTOM'
@@ -33,7 +34,8 @@ export function TargetCreationForm({
   onSubmit, 
   selectedCategories, 
   selectedGroups,
-  isSubmitting = false 
+  isSubmitting = false,
+  editingGoal = null
 }: TargetCreationFormProps) {
   const [targetType, setTargetType] = useState<TargetType>('MONTHLY_FUNDING')
   const [formData, setFormData] = useState({
@@ -43,6 +45,36 @@ export function TargetCreationForm({
     targetDate: '',
     weeklyDay: 6, // Saturday by default
   })
+
+  // Populate form when editing
+  useEffect(() => {
+    if (editingGoal) {
+      setTargetType(editingGoal.type)
+      setFormData({
+        name: editingGoal.name || '',
+        description: editingGoal.description || '',
+        amount: (
+          editingGoal.targetAmount || 
+          editingGoal.weeklyAmount || 
+          editingGoal.monthlyAmount || 
+          editingGoal.yearlyAmount || 
+          0
+        ).toString(),
+        targetDate: editingGoal.targetDate ? new Date(editingGoal.targetDate).toISOString().split('T')[0] : '',
+        weeklyDay: editingGoal.weeklyDay || 6,
+      })
+    } else {
+      // Reset form for new target
+      setTargetType('MONTHLY_FUNDING')
+      setFormData({
+        name: '',
+        description: '',
+        amount: '',
+        targetDate: '',
+        weeklyDay: 6,
+      })
+    }
+  }, [editingGoal, isOpen])
 
   const getSelectedItemsText = () => {
     const totalSelected = selectedCategories.size + selectedGroups.size
@@ -131,8 +163,12 @@ export function TargetCreationForm({
                 <Target className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Set Target</h2>
-                <p className="text-sm text-gray-600">Create a savings goal</p>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {editingGoal ? 'Edit Target' : 'Set Target'}
+                </h2>
+                <p className="text-sm text-gray-600">
+                  {editingGoal ? 'Update your savings goal' : 'Create a savings goal'}
+                </p>
               </div>
             </div>
             <Button
@@ -338,7 +374,10 @@ export function TargetCreationForm({
               disabled={isSubmitting}
               className="flex-1 bg-blue-600 hover:bg-blue-700"
             >
-              {isSubmitting ? 'Creating...' : 'Create Target'}
+              {isSubmitting 
+                ? (editingGoal ? 'Updating...' : 'Creating...') 
+                : (editingGoal ? 'Update Target' : 'Create Target')
+              }
             </Button>
           </div>
         </form>

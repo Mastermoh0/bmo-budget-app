@@ -8,6 +8,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const monthParam = searchParams.get('month')
   const planId = searchParams.get('planId')
+  const includeHidden = searchParams.get('includeHidden') === 'true'
   
   // Parse month or default to current month
   const month = monthParam ? new Date(monthParam) : getCurrentMonth()
@@ -64,11 +65,11 @@ export async function GET(request: Request) {
     const categoryGroups = await prisma.categoryGroup.findMany({
       where: {
         groupId: userMembership.groupId,
-        isHidden: false,
+        ...(includeHidden ? {} : { isHidden: false }),
       },
       include: {
         categories: {
-          where: { isHidden: false },
+          where: includeHidden ? {} : { isHidden: false },
           include: {
             budgets: {
               where: { month: monthStart },
@@ -83,10 +84,22 @@ export async function GET(request: Request) {
     console.log('📊 Budgets API: Found category groups:', categoryGroups.length)
     console.log('📋 Budgets API: Category groups detail:', JSON.stringify(categoryGroups, null, 2))
 
-    // Calculate total account balances (what user actually has available to budget)
+    // Calculate total account balances from user's first plan (shared accounts)
+    // This represents the user's real money available across all budget plans
+    const firstPlanMembership = await prisma.groupMember.findFirst({
+      where: { userId: session.user.id },
+      orderBy: { joinedAt: 'asc' } // Get the first plan (from onboarding)
+    })
+
+    console.log('💰 Budgets API: Plan info for account calculation:', {
+      currentPlanId: userMembership.groupId,
+      firstPlanId: firstPlanMembership?.groupId,
+      usingFirstPlan: firstPlanMembership?.groupId !== userMembership.groupId
+    })
+
     const accounts = await prisma.budgetAccount.findMany({
       where: {
-        groupId: userMembership.groupId,
+        groupId: firstPlanMembership?.groupId || userMembership.groupId,
         isClosed: false, // Only include open accounts
       },
       select: {
@@ -97,6 +110,12 @@ export async function GET(request: Request) {
     const totalIncome = accounts.reduce((sum, account) => {
       return sum + Number(account.balance)
     }, 0)
+
+    console.log('💰 Budgets API: Account calculation:', {
+      accountsCount: accounts.length,
+      totalIncome,
+      accounts: accounts.map(acc => ({ balance: acc.balance }))
+    })
 
     // Calculate totals and "To Be Budgeted"
     let totalBudgeted = 0
@@ -125,8 +144,21 @@ export async function GET(request: Request) {
       }),
     }))
 
+    console.log('💰 Budgets API: Budget totals calculation:', {
+      totalBudgeted,
+      totalActivity,
+      totalAvailable,
+      totalIncome
+    })
+
     // To Be Budgeted = Income - Total Budgeted
     const toBeBudgeted = totalIncome - totalBudgeted
+
+    console.log('💰 Budgets API: Final calculation:', {
+      totalIncome,
+      totalBudgeted,
+      toBeBudgeted
+    })
 
     return NextResponse.json({
       month: monthStart,
@@ -158,6 +190,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Plan name is required' }, { status: 400 })
     }
 
+    // Get user's first plan to copy categories from (onboarding categories)
+    const firstPlan = await prisma.groupMember.findFirst({
+      where: { userId: session.user.id },
+      include: {
+        group: {
+          include: {
+            categoryGroups: {
+              include: {
+                categories: true,
+              },
+              orderBy: { sortOrder: 'asc' },
+            },
+          },
+        },
+      },
+      orderBy: { joinedAt: 'asc' }, // Get the first plan (from onboarding)
+    })
+
     // Create new budget group (plan)
     const budgetGroup = await prisma.budgetGroup.create({
       data: {
@@ -181,6 +231,39 @@ export async function POST(request: Request) {
         }
       }
     })
+
+    // Copy categories from the first plan (onboarding categories) if it exists
+    if (firstPlan?.group?.categoryGroups && firstPlan.group.categoryGroups.length > 0) {
+      console.log(`📋 Copying ${firstPlan.group.categoryGroups.length} category groups from onboarding plan to new plan`)
+      
+      for (const sourceGroup of firstPlan.group.categoryGroups) {
+        // Create the category group
+        const newCategoryGroup = await prisma.categoryGroup.create({
+          data: {
+            name: sourceGroup.name,
+            sortOrder: sourceGroup.sortOrder,
+            groupId: budgetGroup.id,
+          },
+        })
+
+        // Create categories within the group
+        for (const sourceCategory of sourceGroup.categories) {
+          await prisma.category.create({
+            data: {
+              name: sourceCategory.name,
+              sortOrder: sourceCategory.sortOrder,
+              categoryGroupId: newCategoryGroup.id,
+              // Note: Deliberately NOT copying notes, budgets, or other data
+              // New plan should be completely blank except for category structure
+            },
+          })
+        }
+      }
+      
+      console.log(`✅ Successfully copied category structure to new plan: ${budgetGroup.id}`)
+    } else {
+      console.log('⚠️ No categories found in first plan to copy')
+    }
 
     // Return formatted response
     const plan = {

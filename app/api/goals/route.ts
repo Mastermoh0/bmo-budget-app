@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
+import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
@@ -18,27 +18,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Plan ID is required' }, { status: 400 })
     }
 
-    // Verify user owns this plan (assuming planId maps to groupId in our budget system)
-    const plan = await prisma.plan.findFirst({
+    // Verify user has access to this budget group (plan)
+    const userMembership = await prisma.groupMember.findFirst({
       where: {
-        id: planId,
         userId: session.user.id,
+        groupId: planId,
       },
+      include: { group: true }
     })
 
-    if (!plan) {
-      return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
+    if (!userMembership) {
+      return NextResponse.json({ error: 'Plan not found or access denied' }, { status: 404 })
     }
 
-    // Fetch goals for this plan's budget group
+    // Fetch goals for this budget group
     const goals = await prisma.goal.findMany({
       where: {
-        groupId: planId, // Using planId as groupId since they should map 1:1
+        groupId: planId,
       },
       include: {
         category: {
           include: {
-            group: true,
+            categoryGroup: true,
           },
         },
         categoryGroup: true,
@@ -64,6 +65,8 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json()
+    console.log('Goals API - Received data:', JSON.stringify(data, null, 2))
+
     const {
       planId,
       type,
@@ -87,23 +90,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Target type is required' }, { status: 400 })
     }
 
+    // Validate goal type
+    const validGoalTypes = ['TARGET_BALANCE', 'TARGET_BALANCE_BY_DATE', 'MONTHLY_FUNDING', 'WEEKLY_FUNDING', 'YEARLY_FUNDING', 'PERCENT_OF_INCOME', 'CUSTOM']
+    if (!validGoalTypes.includes(type)) {
+      console.error('Invalid goal type received:', type)
+      return NextResponse.json({ error: `Invalid target type: ${type}. Valid types are: ${validGoalTypes.join(', ')}` }, { status: 400 })
+    }
+
     if (categoryIds.length === 0 && categoryGroupIds.length === 0) {
       return NextResponse.json({ error: 'At least one category or category group must be selected' }, { status: 400 })
     }
 
-    // Verify user owns this plan
-    const plan = await prisma.plan.findFirst({
+    // Verify user has access to this budget group (plan)
+    const userMembership = await prisma.groupMember.findFirst({
       where: {
-        id: planId,
         userId: session.user.id,
+        groupId: planId,
       },
+      include: { group: true }
     })
 
-    if (!plan) {
-      return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
+    if (!userMembership) {
+      return NextResponse.json({ error: 'Plan not found or access denied' }, { status: 404 })
     }
 
-    // Verify categories belong to this plan (using planId as groupId)
+    // Verify categories belong to this budget group
     if (categoryIds.length > 0) {
       const categoryCount = await prisma.category.count({
         where: {
@@ -118,7 +129,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Verify category groups belong to this plan
+    // Verify category groups belong to this budget group
     if (categoryGroupIds.length > 0) {
       const groupCount = await prisma.categoryGroup.count({
         where: {
@@ -136,72 +147,115 @@ export async function POST(request: NextRequest) {
 
     // Create goals for categories
     for (const categoryId of categoryIds) {
-      const goalData: any = {
-        type,
-        groupId: planId,
-        categoryId,
-        currentAmount: 0,
-      }
+      try {
+        const goalData: any = {
+          type,
+          groupId: planId,
+          categoryId,
+          currentAmount: 0,
+        }
 
-      // Add optional fields
-      if (name) goalData.name = name
-      if (description) goalData.description = description
-      if (targetAmount !== undefined) goalData.targetAmount = targetAmount
-      if (weeklyAmount !== undefined) goalData.weeklyAmount = weeklyAmount
-      if (monthlyAmount !== undefined) goalData.monthlyAmount = monthlyAmount
-      if (yearlyAmount !== undefined) goalData.yearlyAmount = yearlyAmount
-      if (weeklyDay !== undefined) goalData.weeklyDay = weeklyDay
-      if (targetDate) goalData.targetDate = new Date(targetDate)
+        // Add optional fields with proper type conversion
+        if (name) goalData.name = name
+        if (description) goalData.description = description
+        if (targetAmount !== undefined && targetAmount !== null) {
+          goalData.targetAmount = parseFloat(targetAmount.toString())
+        }
+        if (weeklyAmount !== undefined && weeklyAmount !== null) {
+          goalData.weeklyAmount = parseFloat(weeklyAmount.toString())
+        }
+        if (monthlyAmount !== undefined && monthlyAmount !== null) {
+          goalData.monthlyAmount = parseFloat(monthlyAmount.toString())
+        }
+        if (yearlyAmount !== undefined && yearlyAmount !== null) {
+          goalData.yearlyAmount = parseFloat(yearlyAmount.toString())
+        }
+        if (weeklyDay !== undefined) goalData.weeklyDay = parseInt(weeklyDay.toString())
+        if (targetDate) goalData.targetDate = new Date(targetDate)
 
-      const goal = await prisma.goal.create({
-        data: goalData,
-        include: {
-          category: {
-            include: {
-              categoryGroup: true,
+        console.log('Creating goal for category:', categoryId, 'with data:', JSON.stringify(goalData, null, 2))
+
+        const goal = await prisma.goal.create({
+          data: goalData,
+          include: {
+            category: {
+              include: {
+                categoryGroup: true,
+              },
             },
           },
-        },
-      })
+        })
 
-      createdGoals.push(goal)
+        createdGoals.push(goal)
+      } catch (error) {
+        console.error('Failed to create goal for category:', categoryId, error)
+        throw error
+      }
     }
 
     // Create goals for category groups
     for (const categoryGroupId of categoryGroupIds) {
-      const goalData: any = {
-        type,
-        groupId: planId,
-        categoryGroupId,
-        currentAmount: 0,
+      try {
+        const goalData: any = {
+          type,
+          groupId: planId,
+          categoryGroupId,
+          currentAmount: 0,
+        }
+
+        // Add optional fields with proper type conversion
+        if (name) goalData.name = name
+        if (description) goalData.description = description
+        if (targetAmount !== undefined && targetAmount !== null) {
+          goalData.targetAmount = parseFloat(targetAmount.toString())
+        }
+        if (weeklyAmount !== undefined && weeklyAmount !== null) {
+          goalData.weeklyAmount = parseFloat(weeklyAmount.toString())
+        }
+        if (monthlyAmount !== undefined && monthlyAmount !== null) {
+          goalData.monthlyAmount = parseFloat(monthlyAmount.toString())
+        }
+        if (yearlyAmount !== undefined && yearlyAmount !== null) {
+          goalData.yearlyAmount = parseFloat(yearlyAmount.toString())
+        }
+        if (weeklyDay !== undefined) goalData.weeklyDay = parseInt(weeklyDay.toString())
+        if (targetDate) goalData.targetDate = new Date(targetDate)
+
+        console.log('Creating goal for category group:', categoryGroupId, 'with data:', JSON.stringify(goalData, null, 2))
+
+        const goal = await prisma.goal.create({
+          data: goalData,
+          include: {
+            categoryGroup: true,
+          },
+        })
+
+        createdGoals.push(goal)
+      } catch (error) {
+        console.error('Failed to create goal for category group:', categoryGroupId, error)
+        throw error
       }
-
-      // Add optional fields
-      if (name) goalData.name = name
-      if (description) goalData.description = description
-      if (targetAmount !== undefined) goalData.targetAmount = targetAmount
-      if (weeklyAmount !== undefined) goalData.weeklyAmount = weeklyAmount
-      if (monthlyAmount !== undefined) goalData.monthlyAmount = monthlyAmount
-      if (yearlyAmount !== undefined) goalData.yearlyAmount = yearlyAmount
-      if (weeklyDay !== undefined) goalData.weeklyDay = weeklyDay
-      if (targetDate) goalData.targetDate = new Date(targetDate)
-
-      const goal = await prisma.goal.create({
-        data: goalData,
-        include: {
-          categoryGroup: true,
-        },
-      })
-
-      createdGoals.push(goal)
     }
 
+    console.log('Successfully created goals:', createdGoals.length)
     return NextResponse.json({
       message: `Successfully created ${createdGoals.length} target${createdGoals.length === 1 ? '' : 's'}`,
       goals: createdGoals,
     })
   } catch (error) {
-    console.error('Failed to create goals:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Failed to create goals - Full error:', error)
+    console.error('Error message:', error.message)
+    console.error('Error stack:', error.stack)
+    
+    // Return more specific error message if available
+    let errorMessage = 'Internal server error'
+    if (error.message) {
+      errorMessage = error.message
+    }
+    
+    return NextResponse.json({ 
+      error: errorMessage,
+      details: error.message 
+    }, { status: 500 })
   }
 } 

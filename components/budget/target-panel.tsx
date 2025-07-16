@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Target, Plus, TrendingUp, Calendar, DollarSign, CheckCircle } from 'lucide-react'
+import { X, Target, Plus, TrendingUp, Calendar, DollarSign, CheckCircle, Edit2, Trash2 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { TargetCreationForm } from './target-creation-form'
+import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 
 interface Goal {
   id: string
@@ -42,6 +43,19 @@ export function TargetPanel({ isVisible, onClose, selectedCategories, selectedGr
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
+  const [confirmationDialog, setConfirmationDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    onConfirm: () => void
+    goalToDelete?: Goal
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  })
 
   // Fetch goals for this plan
   useEffect(() => {
@@ -131,6 +145,77 @@ export function TargetPanel({ isVisible, onClose, selectedCategories, selectedGr
     }
   }
 
+  const handleEditTarget = async (targetData: any) => {
+    if (!planId || !editingGoal) return
+    
+    setIsSubmitting(true)
+    try {
+      const response = await fetch(`/api/goals/${editingGoal.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...targetData,
+          planId,
+        }),
+      })
+
+      if (response.ok) {
+        // Refresh goals after editing
+        await fetchGoals()
+        setEditingGoal(null)
+        setShowCreateForm(false)
+      } else {
+        const errorData = await response.json()
+        alert(`Failed to update target: ${errorData.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Failed to update target:', error)
+      alert('Failed to update target. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const showDeleteConfirmation = (goal: Goal) => {
+    const goalName = goal.name || `${goal.category?.name || goal.categoryGroup?.name} Target`
+    setConfirmationDialog({
+      isOpen: true,
+      title: 'Delete Target',
+      message: `Are you sure you want to delete "${goalName}"? This action cannot be undone.`,
+      onConfirm: () => confirmDeleteTarget(goal.id),
+      goalToDelete: goal
+    })
+  }
+
+  const closeConfirmationDialog = () => {
+    setConfirmationDialog(prev => ({ ...prev, isOpen: false }))
+  }
+
+  const confirmDeleteTarget = async (goalId: string) => {
+    try {
+      const response = await fetch(`/api/goals/${goalId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        // Refresh goals after deleting
+        await fetchGoals()
+        closeConfirmationDialog()
+      } else {
+        const errorData = await response.json()
+        alert(`Failed to delete target: ${errorData.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Failed to delete target:', error)
+      alert('Failed to delete target. Please try again.')
+    }
+  }
+
+  const startEditingGoal = (goal: Goal) => {
+    setEditingGoal(goal)
+    setShowCreateForm(true)
+  }
+
   if (!isVisible) return null
 
   return (
@@ -196,7 +281,7 @@ export function TargetPanel({ isVisible, onClose, selectedCategories, selectedGr
               >
                 {/* Goal Header */}
                 <div className="flex items-start justify-between mb-2">
-                  <div>
+                  <div className="flex-1">
                     <h3 className="font-medium text-gray-900 text-sm">
                       {goal.name || `${goal.category?.name || goal.categoryGroup?.name} Target`}
                     </h3>
@@ -207,9 +292,25 @@ export function TargetPanel({ isVisible, onClose, selectedCategories, selectedGr
                       }
                     </p>
                   </div>
-                  {goal.isCompleted && (
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                  )}
+                  <div className="flex items-center space-x-1">
+                    {goal.isCompleted && (
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                    )}
+                    <button
+                      onClick={() => startEditingGoal(goal)}
+                      className="p-1 hover:bg-gray-100 rounded text-gray-500 hover:text-blue-600 transition-colors"
+                      title="Edit target"
+                    >
+                      <Edit2 className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => showDeleteConfirmation(goal)}
+                      className="p-1 hover:bg-gray-100 rounded text-gray-500 hover:text-red-600 transition-colors"
+                      title="Delete target"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Progress Bar */}
@@ -262,11 +363,27 @@ export function TargetPanel({ isVisible, onClose, selectedCategories, selectedGr
       {/* Target Creation Form */}
       <TargetCreationForm
         isOpen={showCreateForm}
-        onClose={() => setShowCreateForm(false)}
-        onSubmit={handleCreateTarget}
+        onClose={() => {
+          setShowCreateForm(false)
+          setEditingGoal(null)
+        }}
+        onSubmit={editingGoal ? handleEditTarget : handleCreateTarget}
         selectedCategories={selectedCategories}
         selectedGroups={selectedGroups}
         isSubmitting={isSubmitting}
+        editingGoal={editingGoal}
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmationDialog.isOpen}
+        onClose={closeConfirmationDialog}
+        onConfirm={confirmationDialog.onConfirm}
+        title={confirmationDialog.title}
+        message={confirmationDialog.message}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
       />
     </div>
   )

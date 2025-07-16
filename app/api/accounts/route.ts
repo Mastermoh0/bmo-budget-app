@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions)
     
@@ -11,10 +11,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get the user's budget group
+    // Always get accounts from user's first plan (shared across all plans)
+    // This represents the user's real bank accounts
     const userMembership = await prisma.groupMember.findFirst({
       where: { userId: session.user.id },
-      include: { group: true }
+      include: { group: true },
+      orderBy: { joinedAt: 'asc' } // Get the first plan (from onboarding)
     })
 
     if (!userMembership) {
@@ -24,7 +26,7 @@ export async function GET() {
 
     const accounts = await prisma.budgetAccount.findMany({
       where: {
-        groupId: userMembership.groupId,
+        groupId: userMembership.groupId, // Always use first plan's group for accounts
       },
       orderBy: [
         { isOnBudget: 'desc' }, // Budget accounts first
@@ -64,10 +66,22 @@ export async function POST(request: Request) {
       }, { status: 400 })
     }
 
-    // Get the user's budget group
+    const body = await request.json()
+    const { 
+      name, 
+      type, 
+      balance = 0, 
+      isOnBudget = true,
+      isClosed = false,
+      institution,
+      accountNumber
+    } = body
+
+    // Always add accounts to user's first plan (shared across all plans)
     const userMembership = await prisma.groupMember.findFirst({
       where: { userId: session.user.id },
-      include: { group: true }
+      include: { group: true },
+      orderBy: { joinedAt: 'asc' } // Get the first plan (from onboarding)
     })
 
     let budgetGroupId = userMembership?.groupId
@@ -90,17 +104,6 @@ export async function POST(request: Request) {
       })
       budgetGroupId = budgetGroup.id
     }
-
-    const body = await request.json()
-    const { 
-      name, 
-      type, 
-      balance = 0, 
-      isOnBudget = true,
-      isClosed = false,
-      institution,
-      accountNumber
-    } = body
 
     // Validate required fields
     if (!name || !type) {

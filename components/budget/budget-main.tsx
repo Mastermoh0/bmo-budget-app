@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { ChevronDown, ChevronRight, Target, Plus } from 'lucide-react'
+import { ChevronDown, ChevronRight, Target, Plus, Eye, EyeOff } from 'lucide-react'
 import { formatCurrency, getCurrentMonth } from '@/lib/utils'
 import { CategoryGroupEditor } from './CategoryGroupEditor'
 import { CategoryEditor } from './CategoryEditor'
@@ -11,6 +11,7 @@ import { BudgetAmountInput } from './BudgetAmountInput'
 import { ContextMenu } from './ContextMenu'
 import { NewCategoryInput } from './NewCategoryInput'
 import { MoveCategoriesModal } from './move-categories-modal'
+import { BulkEditModal } from './bulk-edit-modal'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 
 interface Category {
@@ -44,6 +45,9 @@ interface BudgetMainProps {
   setSelectedCategories: (categories: Set<string>) => void
   selectedGroups: Set<string>
   setSelectedGroups: (groups: Set<string>) => void
+  onBudgetDataChange?: (data: BudgetData | null) => void
+  onAvailableToAssignChange?: (amount: number) => void
+  refreshTrigger?: number
 }
 
 export function BudgetMain({ 
@@ -53,7 +57,10 @@ export function BudgetMain({
   selectedCategories,
   setSelectedCategories,
   selectedGroups,
-  setSelectedGroups 
+  setSelectedGroups,
+  onBudgetDataChange,
+  onAvailableToAssignChange,
+  refreshTrigger
 }: BudgetMainProps) {
   const router = useRouter()
   const [expandedGroups, setExpandedGroups] = useState<string[]>([])
@@ -63,6 +70,7 @@ export function BudgetMain({
   const [hiddenGroups, setHiddenGroups] = useState<Set<string>>(new Set())
   const [showHidden, setShowHidden] = useState(false)
   const [showQuickBudget, setShowQuickBudget] = useState(false)
+  const [showHiddenCategories, setShowHiddenCategories] = useState(false)
   
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -77,6 +85,9 @@ export function BudgetMain({
   
   // Move categories modal state
   const [showMoveModal, setShowMoveModal] = useState(false)
+  
+  // Bulk edit modal state
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false)
   
   // Confirmation dialog state
   const [confirmationDialog, setConfirmationDialog] = useState<{
@@ -122,19 +133,34 @@ export function BudgetMain({
   // Fetch budget data from API
   const fetchBudgetData = async () => {
     try {
-      const url = `/api/budgets?month=${currentMonth.toISOString()}${selectedPlanId ? `&planId=${selectedPlanId}` : ''}`
+      const url = `/api/budgets?month=${currentMonth.toISOString()}${selectedPlanId ? `&planId=${selectedPlanId}` : ''}${showHiddenCategories ? '&includeHidden=true' : ''}`
       console.log('🔍 BudgetMain: Fetching budget data from:', url)
       console.log('🔍 BudgetMain: selectedPlanId:', selectedPlanId)
+      console.log('🔍 BudgetMain: showHiddenCategories:', showHiddenCategories)
       
       const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
         console.log('✅ BudgetMain: Budget data received:', data)
         console.log('📊 BudgetMain: Category groups count:', data.categoryGroups?.length || 0)
+        console.log('💰 BudgetMain: Financial summary:', {
+          toBeBudgeted: data.toBeBudgeted,
+          totalBudgeted: data.totalBudgeted,
+          totalIncome: data.totalIncome,
+          totalActivity: data.totalActivity
+        })
         
         setBudgetData(data)
         // Auto-expand all groups initially
         setExpandedGroups(data.categoryGroups.map((group: CategoryGroup) => group.id))
+        
+        // Pass data to parent component for Quick Budget
+        if (onBudgetDataChange) {
+          onBudgetDataChange(data)
+        }
+        if (onAvailableToAssignChange) {
+          onAvailableToAssignChange(data.toBeBudgeted || 0)
+        }
       } else {
         const errorData = await response.json()
         console.error('❌ BudgetMain: Failed to fetch budget data - Status:', response.status)
@@ -161,7 +187,38 @@ export function BudgetMain({
   // Fetch budget data when component mounts or month/plan changes
   useEffect(() => {
     fetchBudgetData()
-  }, [currentMonth, selectedPlanId])
+  }, [currentMonth, selectedPlanId, showHiddenCategories])
+
+  // Fetch budget data when refresh trigger changes (for quick budget templates)
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger > 0) {
+      console.log('🔄 BudgetMain: Refresh trigger activated, fetching budget data')
+      fetchBudgetData()
+    }
+  }, [refreshTrigger])
+
+  // Listen for quick budget template refresh events
+  useEffect(() => {
+    const handleRefreshBudgetData = async () => {
+      console.log('🔄 BudgetMain: Received refresh event, fetching latest budget data for plan:', selectedPlanId)
+      console.log('🔄 BudgetMain: Current budget data before refresh:', {
+        toBeBudgeted: budgetData?.toBeBudgeted,
+        totalBudgeted: budgetData?.totalBudgeted
+      })
+      
+      await fetchBudgetData()
+      
+      console.log('🔄 BudgetMain: Data refresh completed')
+    }
+
+    console.log('🔧 BudgetMain: Setting up refresh event listener for plan:', selectedPlanId)
+    window.addEventListener('refreshBudgetData', handleRefreshBudgetData)
+    
+    return () => {
+      console.log('🔧 BudgetMain: Removing refresh event listener for plan:', selectedPlanId)
+      window.removeEventListener('refreshBudgetData', handleRefreshBudgetData)
+    }
+  }, [selectedPlanId]) // Include selectedPlanId as dependency to re-register listener when plan changes
 
   // Handler functions for category group operations
   const handleUpdateGroup = async (updatedGroup: CategoryGroup) => {
@@ -273,7 +330,10 @@ export function BudgetMain({
       const response = await fetch(`/api/categories/${groupId}/categories/${updatedCategory.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: updatedCategory.name }),
+        body: JSON.stringify({ 
+          name: updatedCategory.name,
+          planId: selectedPlanId
+        }),
       })
       
       if (response.ok) {
@@ -378,7 +438,8 @@ export function BudgetMain({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           budgeted: newAmount,
-          month: currentMonth.toISOString()
+          month: currentMonth.toISOString(),
+          planId: selectedPlanId // Add planId for plan-specific updates
         }),
       })
       
@@ -456,9 +517,87 @@ export function BudgetMain({
   }
 
   const handleHideSelectedCategories = async () => {
-    // Hide selected categories - you can implement this based on your needs
-    console.log('Hiding categories:', contextMenu.selectedCategories.map(c => c.name))
-    closeContextMenu()
+    try {
+      // Hide each selected category
+      for (const category of contextMenu.selectedCategories) {
+        // Find which group this category belongs to
+        const group = budgetData?.categoryGroups.find(g => 
+          g.categories.some(c => c.id === category.id)
+        )
+        if (group) {
+          const response = await fetch(`/api/categories/${group.id}/categories/${category.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              isHidden: true,
+              planId: selectedPlanId
+            }),
+          })
+          
+          if (response.ok) {
+            // Refresh budget data to get updated state
+            await fetchBudgetData()
+            
+            // Also remove from selected categories
+            const newSelected = new Set(selectedCategories)
+            newSelected.delete(category.id)
+            setSelectedCategories(newSelected)
+          } else {
+            const errorData = await response.json()
+            console.error(`Failed to hide category ${category.name}:`, errorData)
+            alert(`Failed to hide category "${category.name}": ${errorData.error || 'Unknown error'}`)
+            break // Stop hiding process if one fails
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to hide categories:', error)
+      alert('Failed to hide categories. Please try again.')
+    } finally {
+      closeContextMenu()
+    }
+  }
+
+  const handleUnhideSelectedCategories = async () => {
+    try {
+      // Unhide each selected category
+      for (const category of contextMenu.selectedCategories) {
+        // Find which group this category belongs to
+        const group = budgetData?.categoryGroups.find(g => 
+          g.categories.some(c => c.id === category.id)
+        )
+        if (group) {
+          const response = await fetch(`/api/categories/${group.id}/categories/${category.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              isHidden: false,
+              planId: selectedPlanId
+            }),
+          })
+          
+          if (response.ok) {
+            // Refresh budget data to get updated state
+            await fetchBudgetData()
+            
+            // Also remove from selected categories
+            const newSelected = new Set(selectedCategories)
+            newSelected.delete(category.id)
+            setSelectedCategories(newSelected)
+          } else {
+            const errorData = await response.json()
+            console.error(`Failed to unhide category ${category.name}:`, errorData)
+            alert(`Failed to unhide category "${category.name}": ${errorData.error || 'Unknown error'}`)
+            break // Stop unhiding process if one fails
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to unhide categories:', error)
+      alert('Failed to unhide categories. Please try again.')
+    } finally {
+      closeContextMenu()
+    }
   }
 
   const handleDeleteSelectedCategories = async () => {
@@ -554,6 +693,42 @@ export function BudgetMain({
     }
   }
 
+  const handleBulkUpdate = async (updates: { categoryId: string, changes: any }[]) => {
+    try {
+      // Apply each update
+      for (const update of updates) {
+        // Find which group this category belongs to
+        const group = budgetData?.categoryGroups.find(g => 
+          g.categories.some(c => c.id === update.categoryId)
+        )
+        if (group) {
+          const response = await fetch(`/api/categories/${group.id}/categories/${update.categoryId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...update.changes,
+              planId: selectedPlanId
+            }),
+          })
+          
+          if (!response.ok) {
+            throw new Error(`Failed to update category ${update.categoryId}`)
+          }
+        }
+      }
+      
+      // Refresh budget data to get updated values
+      await fetchBudgetData()
+      
+      // Clear selections
+      setSelectedCategories(new Set())
+      closeContextMenu()
+    } catch (error) {
+      console.error('Failed to bulk update categories:', error)
+      throw error
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex-1 bg-white overflow-auto flex items-center justify-center">
@@ -579,6 +754,28 @@ export function BudgetMain({
         onDelete={handleDeleteGroup}
         onAdd={handleAddGroup}
       />
+
+      {/* Hidden Categories Toggle */}
+      <div className="flex justify-between items-center px-6 py-3 bg-gray-50 border-b border-gray-200">
+        <button
+          onClick={() => setShowHiddenCategories(!showHiddenCategories)}
+          className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          {showHiddenCategories ? (
+            <EyeOff className="w-4 h-4" />
+          ) : (
+            <Eye className="w-4 h-4" />
+          )}
+          <span>
+            {showHiddenCategories ? 'Hide Hidden Categories' : 'Show Hidden Categories'}
+          </span>
+        </button>
+        {showHiddenCategories && (
+          <div className="text-xs text-gray-500">
+            Hidden categories are shown with reduced opacity
+          </div>
+        )}
+      </div>
 
       {/* Table Header */}
       <div className="sticky top-0 z-10 bg-ynab-blue text-white px-6 py-3 grid grid-cols-4 gap-4 text-sm font-semibold shadow-sm">
@@ -613,7 +810,9 @@ export function BudgetMain({
                   {group.categories.map((category) => (
                     <div
                       key={category.id}
-                      className="px-6 py-3 hover:bg-ynab-gray-50 cursor-pointer grid grid-cols-4 gap-4 items-center group"
+                      className={`px-6 py-3 hover:bg-ynab-gray-50 cursor-pointer grid grid-cols-4 gap-4 items-center group ${
+                        category.isHidden ? 'opacity-50' : ''
+                      }`}
                       onContextMenu={(e) => handleCategoryRightClick(e, category)}
                     >
                       <div className="flex items-center space-x-2">
@@ -633,7 +832,12 @@ export function BudgetMain({
                             }}
                           />
                         </div>
-                        <span className="text-ynab-gray-700">{category.name}</span>
+                        <span className={`text-ynab-gray-700 ${category.isHidden ? 'line-through' : ''}`}>
+                          {category.name}
+                        </span>
+                        {category.isHidden && (
+                          <EyeOff className="w-3 h-3 text-gray-400" title="Hidden category" />
+                        )}
                         <Target className="w-3 h-3 text-ynab-gray-400" />
                       </div>
                       <div className="text-right">
@@ -677,9 +881,15 @@ export function BudgetMain({
         position={contextMenu.position}
         onClose={closeContextMenu}
         onHide={handleHideSelectedCategories}
+        onUnhide={handleUnhideSelectedCategories}
         onDelete={handleDeleteSelectedCategories}
-        onSetTarget={() => {/* TODO: Implement set target */}}
-        onBulkEdit={() => {/* TODO: Implement bulk edit */}}
+        onSetTarget={() => {
+          // Open target panel with selected categories
+          setShowTargetPanel(true)
+        }}
+        onBulkEdit={() => {
+          setShowBulkEditModal(true)
+        }}
         onBulkDelete={handleDeleteSelectedCategories}
         onMove={handleMoveCategories}
         onClearSelections={() => {
@@ -689,6 +899,7 @@ export function BudgetMain({
         itemName=""
         itemType="category"
         selectedCount={contextMenu.selectedCategories.length}
+        selectedCategories={contextMenu.selectedCategories}
       />
 
       {/* Move Categories Modal */}
@@ -702,6 +913,14 @@ export function BudgetMain({
           )
         ) || []}
         onMove={handleMoveCategoriesConfirm}
+      />
+
+      {/* Bulk Edit Modal */}
+      <BulkEditModal
+        isOpen={showBulkEditModal}
+        onClose={() => setShowBulkEditModal(false)}
+        selectedCategories={contextMenu.selectedCategories}
+        onUpdate={handleBulkUpdate}
       />
 
       {/* Confirmation Modal */}

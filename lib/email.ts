@@ -2,9 +2,8 @@ import nodemailer from 'nodemailer'
 
 // Create transporter based on environment
 const createTransporter = () => {
-  // In production, you would use a real email service like SendGrid, AWS SES, etc.
-  // For development, we'll use a test account or console logging
-  if (process.env.NODE_ENV === 'production' && process.env.SMTP_USER && process.env.SMTP_PASS) {
+  // Use real SMTP if credentials are provided, regardless of environment
+  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
     // Production email service (configure with your email provider)
     return nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
