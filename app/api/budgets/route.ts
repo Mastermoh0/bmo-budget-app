@@ -184,7 +184,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { name, description, currency = 'USD' } = body
+    const { name, description, currency = 'NGN' } = body
 
     if (!name?.trim()) {
       return NextResponse.json({ error: 'Plan name is required' }, { status: 400 })

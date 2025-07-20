@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       data: {
         name: `${name}'s Budget`,
         description: 'Your personal budget',
-        currency: 'USD',
+        currency: 'NGN',
         members: {
           create: {
             userId: user.id,

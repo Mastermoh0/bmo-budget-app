@@ -46,7 +46,7 @@ export default function ProfilePage() {
   // Plan management states
   const [isCreatingPlan, setIsCreatingPlan] = useState(false)
   const [editingPlan, setEditingPlan] = useState<BudgetPlan | null>(null)
-  const [planForm, setPlanForm] = useState({ name: '', description: '', currency: 'USD' })
+  const [planForm, setPlanForm] = useState({ name: '', description: '', currency: 'NGN' })
   const [isPlanSaving, setIsPlanSaving] = useState(false)
   const [planError, setPlanError] = useState('')
   
@@ -174,7 +174,7 @@ export default function ProfilePage() {
 
   // Plan management functions
   const handleCreatePlan = () => {
-    setPlanForm({ name: '', description: '', currency: 'USD' })
+    setPlanForm({ name: '', description: '', currency: 'NGN' })
     setPlanError('')
     setIsCreatingPlan(true)
   }
@@ -216,7 +216,7 @@ export default function ProfilePage() {
         await fetchProfile() // Refresh profile data
         setIsCreatingPlan(false)
         setEditingPlan(null)
-        setPlanForm({ name: '', description: '', currency: 'USD' })
+        setPlanForm({ name: '', description: '', currency: 'NGN' })
       } else {
         const data = await response.json()
         setPlanError(data.error || `Failed to ${editingPlan ? 'update' : 'create'} plan`)
@@ -258,7 +258,7 @@ export default function ProfilePage() {
   const handleCancelPlanEdit = () => {
     setIsCreatingPlan(false)
     setEditingPlan(null)
-    setPlanForm({ name: '', description: '', currency: 'USD' })
+    setPlanForm({ name: '', description: '', currency: 'NGN' })
     setPlanError('')
   }
 

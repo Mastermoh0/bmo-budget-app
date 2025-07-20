@@ -130,7 +130,7 @@ model BudgetGroup {
   id          String   @id @default(cuid())
   name        String
   description String?
-  currency    String   @default("USD")
+  currency    String   @default("NGN")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
