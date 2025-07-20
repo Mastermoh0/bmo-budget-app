@@ -7,19 +7,20 @@ export function useSocket(groupId: string, userId: string) {
   const socketRef = useRef<Socket | null>(null)
 
   useEffect(() => {
-    const initSocket = async () => {
-      // Initialize Socket.IO server
-      await fetch('/api/socket')
+    const initSocket = () => {
+      // Connect to separate Socket.io server
+      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001'
       
-      const newSocket = io({
-        path: '/api/socket',
+      const newSocket = io(socketUrl, {
         transports: ['websocket', 'polling'],
+        withCredentials: true,
+        autoConnect: true
       })
 
       newSocket.on('connect', () => {
         console.log('Connected to Socket.IO server')
         setIsConnected(true)
-        newSocket.emit('join-group', { groupId, userId })
+        newSocket.emit('join-group', groupId)
       })
 
       newSocket.on('disconnect', () => {
