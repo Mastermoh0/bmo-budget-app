@@ -534,6 +534,7 @@ export default function ProfilePage() {
                         <option value="CAD">CAD - Canadian Dollar</option>
                         <option value="AUD">AUD - Australian Dollar</option>
                         <option value="JPY">JPY - Japanese Yen</option>
+                        <option value="NGN">NGN - Nigerian Naira</option>
                       </select>
                     </div>
                   </div>

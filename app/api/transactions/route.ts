@@ -20,6 +20,12 @@ async function updateBudgetActivity(categoryId: string, amount: number, transact
       },
     })
 
+    // Determine if this is income or expense
+    // Negative amount = expense (money going out)
+    // Positive amount = income (money coming in)
+    const isIncome = amount > 0
+    const absAmount = Math.abs(amount)
+
     if (existingBudget) {
       // Update existing budget activity
       await prisma.budget.update({
@@ -32,11 +38,10 @@ async function updateBudgetActivity(categoryId: string, amount: number, transact
         },
         data: {
           activity: {
-            increment: Math.abs(amount), // Always add positive amount to activity (spending)
+            increment: isIncome ? -absAmount : absAmount, // Income decreases activity, expense increases
           },
-          // Recalculate available = budgeted - activity
           available: {
-            decrement: Math.abs(amount),
+            increment: isIncome ? absAmount : -absAmount, // Income increases available, expense decreases
           },
         },
       })
@@ -48,8 +53,8 @@ async function updateBudgetActivity(categoryId: string, amount: number, transact
           categoryId,
           month: budgetMonth,
           budgeted: 0,
-          activity: Math.abs(amount), // Always positive for activity
-          available: -Math.abs(amount), // Negative available since no budget allocated
+          activity: isIncome ? -absAmount : absAmount, // Income is negative activity, expense is positive
+          available: isIncome ? absAmount : -absAmount, // Income increases available, expense decreases
         },
       })
     }
@@ -296,16 +301,9 @@ export async function POST(request: Request) {
 
     // Update budget activity if this is a categorized transaction (not a transfer)
     if (categoryId && !toAccountId) {
-      // For expense transactions (negative amounts), add to activity
-      // For income transactions (positive amounts), we'll handle differently
-      if (transactionAmount < 0) {
-        // Expense: Add to category activity (spending)
-        await updateBudgetActivity(categoryId, transactionAmount, transactionDate, userMembership.groupId)
-      } else {
-        // Income: For now, we'll still add to category activity but as negative
-        // This represents income allocated to this category (like a refund or cashback)
-        await updateBudgetActivity(categoryId, -transactionAmount, transactionDate, userMembership.groupId)
-      }
+      // Pass the transaction amount as-is to updateBudgetActivity
+      // Negative amount = expense, Positive amount = income
+      await updateBudgetActivity(categoryId, transactionAmount, transactionDate, userMembership.groupId)
     }
 
     return NextResponse.json(transaction, { status: 201 })
