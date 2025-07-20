@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { getCurrentMonth } from '@/lib/utils'
 import { BudgetHeader } from '@/components/budget/budget-header'
 import { BudgetMain } from '@/components/budget/budget-main.tsx'
 import { QuickBudgetPanel } from '@/components/budget/quick-budget-panel'
@@ -14,6 +15,10 @@ import { NotesToggleButton } from '@/components/budget/notes-toggle-button'
 export default function Home() {
   const [selectedPlanId, setSelectedPlanId] = useState<string>('')
   const [hasAutoSelected, setHasAutoSelected] = useState(false)
+  
+  // Month state management - moved from header to parent
+  const [currentMonth, setCurrentMonth] = useState(getCurrentMonth())
+  
   const [showTargetPanel, setShowTargetPanel] = useState(false)
   const [showNotesPanel, setShowNotesPanel] = useState(false)
   const [showQuickBudget, setShowQuickBudget] = useState(false)
@@ -25,157 +30,91 @@ export default function Home() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  // Check if a plan ID is provided in the URL, or auto-select last used plan
+  // Handle plan changes from URL parameters
   useEffect(() => {
-    const planId = searchParams.get('plan')
-    if (planId) {
-      setSelectedPlanId(planId)
-      setHasAutoSelected(true)
-      // Save to localStorage
-      localStorage.setItem('lastSelectedPlan', planId)
-    } else if (!hasAutoSelected) {
-      // No URL parameter, check localStorage for last selected plan
-      const lastSelectedPlan = localStorage.getItem('lastSelectedPlan')
-      if (lastSelectedPlan) {
-        console.log('🔄 Restoring last selected plan from localStorage:', lastSelectedPlan)
-        setSelectedPlanId(lastSelectedPlan)
+    const planFromUrl = searchParams.get('plan')
+    if (planFromUrl && planFromUrl !== selectedPlanId) {
+      setSelectedPlanId(planFromUrl)
+      localStorage.setItem('lastSelectedPlan', planFromUrl)
+    } else if (!planFromUrl && !hasAutoSelected) {
+      // Auto-select last plan from localStorage if no plan in URL
+      const lastPlan = localStorage.getItem('lastSelectedPlan')
+      if (lastPlan) {
+        setSelectedPlanId(lastPlan)
         setHasAutoSelected(true)
-        
-        // Update URL to reflect the restored plan
-        const newSearchParams = new URLSearchParams(searchParams)
-        newSearchParams.set('plan', lastSelectedPlan)
-        router.replace(`/?${newSearchParams.toString()}`)
-      } else {
-        // No saved plan, fetch user's plans and auto-select first one
-        fetchUserPlansAndAutoSelect()
       }
     }
-  }, [searchParams, hasAutoSelected])
+  }, [searchParams, selectedPlanId, hasAutoSelected])
 
-  const fetchUserPlansAndAutoSelect = async () => {
-    try {
-      console.log('🔍 Home: Fetching user plans for auto-selection')
-      const response = await fetch('/api/user/profile')
-      if (response.ok) {
-        const data = await response.json()
-        console.log('✅ Home: User profile data:', data)
-        console.log('📋 Home: Available budgets:', data.budgets?.length || 0)
-        
-        if (data.budgets && data.budgets.length > 0) {
-          const firstPlanId = data.budgets[0].id
-          console.log('🎯 Home: Auto-selecting first plan:', firstPlanId, data.budgets[0].name)
-          setSelectedPlanId(firstPlanId)
-          setHasAutoSelected(true)
-          
-          // Save to localStorage
-          localStorage.setItem('lastSelectedPlan', firstPlanId)
-          
-          // Update URL to reflect the auto-selected plan
-          const newSearchParams = new URLSearchParams(searchParams)
-          newSearchParams.set('plan', firstPlanId)
-          router.replace(`/?${newSearchParams.toString()}`)
-        } else {
-          console.log('⚠️ Home: No budgets found for user')
-        }
-      } else {
-        console.error('❌ Home: Failed to fetch user profile - Status:', response.status)
-      }
-    } catch (error) {
-      console.error('❌ Home: Exception during plan fetch:', error)
-    }
-  }
-
+  // Handle plan selection
   const handlePlanChange = (planId: string) => {
-    console.log('🔄 Home: Plan changing from', selectedPlanId, 'to', planId)
-    
-    // Clear budget data immediately to prevent stale data issues
-    setBudgetData(null)
-    setAvailableToAssign(0)
-    
     setSelectedPlanId(planId)
-    
-    // Save to localStorage
     localStorage.setItem('lastSelectedPlan', planId)
     
-    // Update URL with the selected plan
-    const newSearchParams = new URLSearchParams(searchParams)
-    newSearchParams.set('plan', planId)
-    router.push(`/?${newSearchParams.toString()}`)
+    // Update URL with plan parameter
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('plan', planId)
+    router.replace(`/?${params.toString()}`)
   }
 
-  // Handle applying budget template from Quick Budget
-  const handleApplyBudget = async (assignments: { categoryId: string, amount: number }[]) => {
+  // Handle month navigation
+  const handleMonthChange = (newMonth: Date) => {
+    console.log('🗓️ Month changed to:', newMonth)
+    setCurrentMonth(newMonth)
+  }
+
+  // Handle QuickBudget actions
+  const handleApplyBudget = async (targetData: any) => {
     try {
-      console.log('🚀 Quick Budget: Applying template with assignments:', assignments)
-      console.log('📊 Quick Budget: Current budget data:', budgetData)
+      console.log('💡 QuickBudget: Applying target data:', targetData)
       
-      // Apply each budget assignment
-      for (const assignment of assignments) {
-        // Find the group that contains this category
-        const group = budgetData?.categoryGroups.find((g: any) => 
-          g.categories.some((c: any) => c.id === assignment.categoryId)
-        )
-        
-        if (!group) {
-          console.error(`❌ Quick Budget: Could not find group for category ID: ${assignment.categoryId}`)
-          throw new Error(`Could not find category group for category ${assignment.categoryId}`)
-        }
-        
-        console.log(`💰 Quick Budget: Updating category ${assignment.categoryId} to ${assignment.amount} in group ${group.id}`)
-        
-        const response = await fetch(`/api/categories/${group.id}/categories/${assignment.categoryId}`, {
+      const requests = targetData.map((target: any) => {
+        const budget = target.suggestedAmount || target.amount || 0
+        return fetch(`/api/categories/${target.groupId}/categories/${target.categoryId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            budgeted: assignment.amount,
-            month: new Date().toISOString(),
-            planId: selectedPlanId // Add planId to ensure we're updating the right plan
+            budgeted: budget,
+            month: currentMonth.toISOString(),
+            planId: selectedPlanId
           }),
         })
-        
-        if (!response.ok) {
-          const errorData = await response.json()
-          console.error(`❌ Quick Budget: API error for category ${assignment.categoryId}:`, errorData)
-          throw new Error(`Failed to update category ${assignment.categoryId}: ${errorData.error || 'Unknown error'}`)
-        }
-        
-        console.log(`✅ Quick Budget: Successfully updated category ${assignment.categoryId}`)
+      })
+
+      const responses = await Promise.all(requests)
+      const failed = responses.filter(r => !r.ok)
+      
+      if (failed.length > 0) {
+        console.error('❌ Some budget updates failed')
+        alert(`${failed.length} budget updates failed. Please try again.`)
+      } else {
+        console.log('✅ All budget updates successful')
+        handleForceRefresh()
       }
-      
-      console.log('🎉 Quick Budget: All assignments applied successfully!')
-      
-      // Wait a moment for database updates to complete, then trigger refresh
-      setTimeout(() => {
-        console.log('🔄 Quick Budget: Triggering data refresh via event')
-        window.dispatchEvent(new CustomEvent('refreshBudgetData'))
-        console.log('🔄 Quick Budget: Event dispatched, listeners should receive it now')
-      }, 500) // 500ms delay to ensure all DB updates are complete
-      
     } catch (error) {
-      console.error('Failed to apply budget template:', error)
-      alert(`Failed to apply budget template: ${error.message}`)
-      throw error
+      console.error('❌ QuickBudget application failed:', error)
+      alert('Failed to apply budget changes. Please try again.')
     }
   }
 
-  // Function to force data refresh
   const handleForceRefresh = () => {
-    console.log('🔄 Home: Forcing budget data refresh')
+    console.log('🔄 Force refresh triggered')
     setRefreshTrigger(prev => prev + 1)
   }
 
   return (
-    <>
-      {/* Header */}
+    <main className="h-screen flex flex-col bg-ynab-cream">
       <BudgetHeader 
-        selectedPlanId={selectedPlanId}
+        selectedPlanId={selectedPlanId} 
         onPlanChange={handlePlanChange}
+        currentMonth={currentMonth}
+        onMonthChange={handleMonthChange}
       />
       
-      {/* Budget Main Content */}
       <div className="flex-1 flex overflow-hidden">
         <BudgetMain 
           selectedPlanId={selectedPlanId}
+          currentMonth={currentMonth}
           showTargetPanel={showTargetPanel}
           setShowTargetPanel={setShowTargetPanel}
           selectedCategories={selectedCategories}
@@ -185,6 +124,7 @@ export default function Home() {
           onBudgetDataChange={(data) => {
             console.log('🔄 Home: Budget data updated, plan info:', {
               selectedPlanId,
+              currentMonth: currentMonth.toISOString(),
               categoryGroupsCount: data?.categoryGroups?.length,
               firstGroupId: data?.categoryGroups?.[0]?.groupId,
               sampleCategoryId: data?.categoryGroups?.[0]?.categories?.[0]?.id
@@ -229,6 +169,6 @@ export default function Home() {
           planId={selectedPlanId}
         />
       </div>
-    </>
+    </main>
   )
 } 

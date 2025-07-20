@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
-import { Send, Reply, Users, MessageCircle } from 'lucide-react'
+import { Send, Reply, MessageCircle, Download, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
@@ -12,12 +12,15 @@ interface Message {
   id: string
   content: string
   createdAt: string
-  senderId: string
+  senderId: string | null
   sender: {
     id: string
     name: string | null
     email: string
-  }
+  } | null
+  senderName: string | null
+  senderEmail: string | null
+  isAnonymized: boolean
   replyTo?: {
     id: string
     content: string
@@ -25,7 +28,8 @@ interface Message {
       id: string
       name: string | null
       email: string
-    }
+    } | null
+    senderName: string | null
   }
   _count: {
     replies: number
@@ -44,10 +48,8 @@ export function TeamMessaging({ groupId, currentUserId }: TeamMessagingProps) {
   const [replyTo, setReplyTo] = useState<Message | null>(null)
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
-  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
-  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set())
+  const [exporting, setExporting] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const { socket, isConnected } = useSocket(groupId, currentUserId)
 
@@ -60,28 +62,8 @@ export function TeamMessaging({ groupId, currentUserId }: TeamMessagingProps) {
       scrollToBottom()
     })
 
-    socket.on('user-online', (data) => {
-      setOnlineUsers(prev => new Set(prev).add(data.userId))
-    })
-
-    socket.on('user-typing', (data) => {
-      if (data.userId !== currentUserId) {
-        if (data.isTyping) {
-          setTypingUsers(prev => new Set(prev).add(data.userId))
-        } else {
-          setTypingUsers(prev => {
-            const newSet = new Set(prev)
-            newSet.delete(data.userId)
-            return newSet
-          })
-        }
-      }
-    })
-
     return () => {
       socket.off('new-message')
-      socket.off('user-online')
-      socket.off('user-typing')
     }
   }, [socket, currentUserId])
 
@@ -113,40 +95,48 @@ export function TeamMessaging({ groupId, currentUserId }: TeamMessagingProps) {
     scrollToBottom()
   }, [messages])
 
-  // Handle typing indicator
-  const handleTyping = () => {
-    if (socket) {
-      socket.emit('typing', { groupId, userId: currentUserId, isTyping: true })
-      
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current)
-      }
-      
-      typingTimeoutRef.current = setTimeout(() => {
-        socket.emit('typing', { groupId, userId: currentUserId, isTyping: false })
-      }, 1000)
-    }
-  }
-
   // Send message
   const handleSendMessage = async () => {
     if (!newMessage.trim() || sending) return
 
     setSending(true)
     try {
-      if (socket) {
+      // Try to send via socket first (real-time)
+      if (socket && isConnected) {
         socket.emit('send-message', {
           groupId,
           content: newMessage,
           senderId: currentUserId,
           replyToId: replyTo?.id
         })
+      } else {
+        // Fallback to direct API call if socket is not connected
+        const response = await fetch('/api/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            groupId,
+            content: newMessage,
+            replyToId: replyTo?.id
+          }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          // Add message to local state immediately for better UX
+          setMessages(prev => [data.message, ...prev])
+        } else {
+          throw new Error('Failed to send message')
+        }
       }
       
       setNewMessage('')
       setReplyTo(null)
     } catch (error) {
       console.error('Error sending message:', error)
+      // Could add toast notification here
     } finally {
       setSending(false)
     }
@@ -158,6 +148,48 @@ export function TeamMessaging({ groupId, currentUserId }: TeamMessagingProps) {
       e.preventDefault()
       handleSendMessage()
     }
+  }
+
+  // Export messages
+  const handleExport = async (format: 'json' | 'csv') => {
+    setExporting(true)
+    try {
+      const response = await fetch(`/api/messages/export?groupId=${groupId}&format=${format}`)
+      
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        
+        // Get filename from Content-Disposition header or create default
+        const contentDisposition = response.headers.get('Content-Disposition')
+        const filename = contentDisposition 
+          ? contentDisposition.split('filename=')[1]?.replace(/"/g, '')
+          : `messages-${new Date().toISOString().split('T')[0]}.${format}`
+        
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+      } else {
+        const error = await response.json()
+        console.error('Export failed:', error.error)
+      }
+    } catch (error) {
+      console.error('Error exporting messages:', error)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  // Get display name for message sender
+  const getSenderDisplayName = (message: Message) => {
+    if (message.isAnonymized) {
+      return message.senderName || '[Removed User]'
+    }
+    return message.sender?.name || message.sender?.email || '[Unknown User]'
   }
 
   // Format timestamp
@@ -188,21 +220,43 @@ export function TeamMessaging({ groupId, currentUserId }: TeamMessagingProps) {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Team Messages</h3>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-lg font-semibold text-gray-900">Team Messages</h3>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExport('json')}
+              disabled={exporting || messages.length === 0}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              JSON
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExport('csv')}
+              disabled={exporting || messages.length === 0}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              CSV
+            </Button>
+          </div>
+        </div>
         <p className="text-sm text-gray-600">
-          Chat with your team members in real-time.
+          Chat with your team members in real-time. Messages from removed users are preserved for context.
         </p>
       </div>
 
-      {/* Online Users Indicator */}
+      {/* Connection Status */}
       <Card className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <Users className="w-4 h-4" />
-            <span>{onlineUsers.size} member{onlineUsers.size !== 1 ? 's' : ''} online</span>
-            {typingUsers.size > 0 && (
-              <span className="text-blue-600 italic">
-                {typingUsers.size} user{typingUsers.size !== 1 ? 's' : ''} typing...
+            <MessageCircle className="w-4 h-4" />
+            <span>Team Chat</span>
+            {messages.some(m => m.isAnonymized) && (
+              <span className="text-amber-600 text-xs">
+                • Contains messages from removed users
               </span>
             )}
           </div>
@@ -235,14 +289,16 @@ export function TeamMessaging({ groupId, currentUserId }: TeamMessagingProps) {
                   className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                     message.senderId === currentUserId
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-900'
+                      : message.isAnonymized
+                        ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                        : 'bg-gray-100 text-gray-900'
                   }`}
                 >
                   {/* Reply indicator */}
                   {message.replyTo && (
                     <div className="text-xs opacity-75 mb-1 p-2 bg-black bg-opacity-10 rounded">
                       <div className="font-medium">
-                        Replying to {message.replyTo.sender.name || message.replyTo.sender.email}
+                        Replying to {message.replyTo.senderName || message.replyTo.sender?.name || '[Removed User]'}
                       </div>
                       <div className="truncate">
                         {message.replyTo.content}
@@ -252,18 +308,21 @@ export function TeamMessaging({ groupId, currentUserId }: TeamMessagingProps) {
                   
                   {/* Sender name (for others' messages) */}
                   {message.senderId !== currentUserId && (
-                    <div className="text-xs font-medium mb-1">
-                      {message.sender.name || message.sender.email}
+                    <div className="text-xs font-medium mb-1 flex items-center space-x-1">
+                      <span>{getSenderDisplayName(message)}</span>
+                      {message.isAnonymized && (
+                        <span className="text-xs opacity-75">(removed user)</span>
+                      )}
                     </div>
                   )}
                   
                   {/* Message content */}
                   <div className="whitespace-pre-wrap">{message.content}</div>
                   
-                  {/* Timestamp and actions */}
+                  {/* Message footer */}
                   <div className="flex items-center justify-between mt-2 text-xs opacity-75">
                     <span>{formatTime(message.createdAt)}</span>
-                    {message.senderId !== currentUserId && (
+                    {message.senderId !== currentUserId && !message.isAnonymized && (
                       <button
                         onClick={() => setReplyTo(message)}
                         className="hover:opacity-100 transition-opacity"
@@ -285,7 +344,7 @@ export function TeamMessaging({ groupId, currentUserId }: TeamMessagingProps) {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-medium text-gray-900">
-                  Replying to {replyTo.sender.name || replyTo.sender.email}
+                  Replying to {getSenderDisplayName(replyTo)}
                 </div>
                 <div className="text-sm text-gray-600 truncate">
                   {replyTo.content}
@@ -302,13 +361,10 @@ export function TeamMessaging({ groupId, currentUserId }: TeamMessagingProps) {
         )}
 
         {/* Message input */}
-        <div className="flex space-x-2">
+        <div className="flex items-center space-x-2">
           <Input
             value={newMessage}
-            onChange={(e) => {
-              setNewMessage(e.target.value)
-              handleTyping()
-            }}
+            onChange={(e) => setNewMessage(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Type a message..."
             className="flex-1"

@@ -221,6 +221,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No budget group found' }, { status: 404 })
     }
 
+    // Check if user has permission to create transactions (VIEWER role cannot modify)
+    if (userMembership.role === 'VIEWER') {
+      return NextResponse.json({ 
+        error: 'Access denied. Viewers cannot create or modify transactions.',
+        userRole: userMembership.role 
+      }, { status: 403 })
+    }
+
     // Validate required fields
     if (!date || !amount || !fromAccountId) {
       return NextResponse.json(

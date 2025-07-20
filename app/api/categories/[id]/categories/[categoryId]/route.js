@@ -196,6 +196,14 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'No budget group found' }, { status: 404 })
     }
 
+    // Check if user has permission to modify categories (VIEWER role cannot modify)
+    if (userMembership.role === 'VIEWER') {
+      return NextResponse.json({ 
+        error: 'Access denied. Viewers cannot modify categories.',
+        userRole: userMembership.role 
+      }, { status: 403 })
+    }
+
     // Verify category belongs to user's group
     const category = await prisma.category.findFirst({
       where: { 

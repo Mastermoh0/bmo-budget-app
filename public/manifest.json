@@ -1,12 +1,11 @@
 {
-  "name": "Budget App - Personal Finance Manager",
-  "short_name": "Budget App",
-  "description": "A full-featured budgeting app inspired by YNAB with offline support",
+  "name": "BMO Budget - Desktop Finance Manager",
+  "short_name": "BMO Budget",
+  "description": "Self-hosted desktop budget application",
   "start_url": "/",
-  "display": "standalone",
+  "display": "browser",
   "background_color": "#005A8B",
   "theme_color": "#005A8B",
-  "orientation": "portrait-primary",
   "categories": ["finance", "productivity"],
   "lang": "en-US",
   "icons": [
@@ -14,13 +13,13 @@
       "src": "/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "any"
     },
     {
       "src": "/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "any"
     }
   ],
   "screenshots": [
@@ -29,12 +28,6 @@
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide"
-    },
-    {
-      "src": "/screenshot-mobile.png", 
-      "sizes": "375x812",
-      "type": "image/png",
-      "form_factor": "narrow"
     }
   ],
   "shortcuts": [
@@ -42,7 +35,7 @@
       "name": "Add Transaction",
       "short_name": "Add Transaction",
       "description": "Quickly add a new transaction",
-      "url": "/transactions/new",
+      "url": "/transactions",
       "icons": [
         {
           "src": "/icon-192x192.png",
@@ -53,8 +46,20 @@
     {
       "name": "View Budget",
       "short_name": "Budget",
-      "description": "View current month budget",
-      "url": "/budget",
+      "description": "View current budget",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "View Reports",
+      "short_name": "Reports",
+      "description": "View financial reports",
+      "url": "/reports",
       "icons": [
         {
           "src": "/icon-192x192.png",

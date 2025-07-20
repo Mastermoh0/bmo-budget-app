@@ -25,15 +25,19 @@ export async function GET(request: Request) {
     const monthParam = searchParams.get('month')
     const categoryFilter = searchParams.get('category')
     const accountFilter = searchParams.get('account')
+    const planId = searchParams.get('planId')
 
     // Parse month or default to current month
     const month = monthParam ? new Date(monthParam) : new Date()
     const monthStart = new Date(month.getFullYear(), month.getMonth(), 1)
     const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0, 23, 59, 59, 999)
 
+    // Use specified planId or default to user's group
+    const targetGroupId = planId || userMembership.groupId
+
     // Build where clause for transactions
     const whereClause: any = {
-      groupId: userMembership.groupId,
+      groupId: targetGroupId,
       date: {
         gte: monthStart,
         lte: monthEnd,
@@ -75,30 +79,92 @@ export async function GET(request: Request) {
       },
     })
 
-    // Group spending by category
+    // Fetch budget data for the same month
+    const categoryGroups = await prisma.categoryGroup.findMany({
+      where: {
+        groupId: targetGroupId,
+        isHidden: false,
+      },
+      include: {
+        categories: {
+          where: { isHidden: false },
+          include: {
+            budgets: {
+              where: { month: monthStart },
+            },
+          },
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
+      orderBy: { sortOrder: 'asc' },
+    })
+
+    // Create maps for budget data
+    const budgetDataMap = new Map<string, {
+      budgeted: number
+      activity: number
+      available: number
+    }>()
+
+    // Process budget data
+    let totalBudgeted = 0
+    let totalBudgetActivity = 0
+    let totalAvailable = 0
+
+    categoryGroups.forEach(group => {
+      group.categories.forEach(category => {
+        const budget = category.budgets[0] || { budgeted: 0, activity: 0, available: 0 }
+        const budgeted = Number(budget.budgeted)
+        const activity = Number(budget.activity)
+        const available = Number(budget.available)
+        
+        totalBudgeted += budgeted
+        totalBudgetActivity += activity
+        totalAvailable += available
+        
+        budgetDataMap.set(category.id, {
+          budgeted,
+          activity,
+          available
+        })
+      })
+    })
+
+    // Group spending by category with budget comparisons
     const categorySpending = new Map<string, {
       id: string
       name: string
       groupName: string
       groupId: string
-      amount: number
+      actualSpending: number
+      budgeted: number
+      available: number
+      budgetActivity: number
+      variance: number
+      budgetUtilization: number
       transactionCount: number
     }>()
 
-    // Group spending by category group
+    // Group spending by category group with budget comparisons
     const groupSpending = new Map<string, {
       id: string
       name: string
-      amount: number
+      actualSpending: number
+      budgeted: number
+      available: number
+      budgetActivity: number
+      variance: number
+      budgetUtilization: number
       transactionCount: number
       categories: string[]
     }>()
 
-    let totalSpending = 0
+    let totalActualSpending = 0
 
+    // Process transactions
     transactions.forEach(transaction => {
       const amount = Math.abs(Number(transaction.amount)) // Convert to positive for display
-      totalSpending += amount
+      totalActualSpending += amount
 
       // Handle categorized transactions
       if (transaction.category) {
@@ -107,18 +173,32 @@ export async function GET(request: Request) {
         const groupName = transaction.category.categoryGroup?.name || 'Uncategorized'
         const groupId = transaction.category.categoryGroup?.id || 'uncategorized'
 
+        // Get budget data for this category
+        const budgetData = budgetDataMap.get(categoryId) || { budgeted: 0, activity: 0, available: 0 }
+
         // Update category spending
         if (categorySpending.has(categoryId)) {
           const existing = categorySpending.get(categoryId)!
-          existing.amount += amount
+          existing.actualSpending += amount
           existing.transactionCount += 1
+          // Recalculate variance and utilization
+          existing.variance = existing.actualSpending - existing.budgeted
+          existing.budgetUtilization = existing.budgeted > 0 ? (existing.actualSpending / existing.budgeted) * 100 : 0
         } else {
+          const variance = amount - budgetData.budgeted
+          const budgetUtilization = budgetData.budgeted > 0 ? (amount / budgetData.budgeted) * 100 : 0
+          
           categorySpending.set(categoryId, {
             id: categoryId,
             name: categoryName,
             groupName,
             groupId,
-            amount,
+            actualSpending: amount,
+            budgeted: budgetData.budgeted,
+            available: budgetData.available,
+            budgetActivity: budgetData.activity,
+            variance,
+            budgetUtilization,
             transactionCount: 1
           })
         }
@@ -126,16 +206,36 @@ export async function GET(request: Request) {
         // Update group spending
         if (groupSpending.has(groupId)) {
           const existing = groupSpending.get(groupId)!
-          existing.amount += amount
+          existing.actualSpending += amount
           existing.transactionCount += 1
           if (!existing.categories.includes(categoryName)) {
             existing.categories.push(categoryName)
           }
+          // Recalculate variance and utilization
+          existing.variance = existing.actualSpending - existing.budgeted
+          existing.budgetUtilization = existing.budgeted > 0 ? (existing.actualSpending / existing.budgeted) * 100 : 0
         } else {
+          // Get total budgeted for this group
+          const groupBudgeted = Array.from(budgetDataMap.entries())
+            .filter(([catId]) => {
+              // Find category by ID and check if it belongs to this group
+              const cat = categoryGroups.find(g => g.id === groupId)?.categories.find(c => c.id === catId)
+              return cat !== undefined
+            })
+            .reduce((sum, [, budget]) => sum + budget.budgeted, 0)
+          
+          const variance = amount - groupBudgeted
+          const budgetUtilization = groupBudgeted > 0 ? (amount / groupBudgeted) * 100 : 0
+          
           groupSpending.set(groupId, {
             id: groupId,
             name: groupName,
-            amount,
+            actualSpending: amount,
+            budgeted: groupBudgeted,
+            available: 0, // Will calculate this properly
+            budgetActivity: 0, // Will calculate this properly
+            variance,
+            budgetUtilization,
             transactionCount: 1,
             categories: [categoryName]
           })
@@ -145,15 +245,21 @@ export async function GET(request: Request) {
         const uncategorizedKey = 'uncategorized'
         if (categorySpending.has(uncategorizedKey)) {
           const existing = categorySpending.get(uncategorizedKey)!
-          existing.amount += amount
+          existing.actualSpending += amount
           existing.transactionCount += 1
+          existing.variance = existing.actualSpending - existing.budgeted
         } else {
           categorySpending.set(uncategorizedKey, {
             id: uncategorizedKey,
             name: 'Uncategorized',
             groupName: 'Uncategorized',
             groupId: uncategorizedKey,
-            amount,
+            actualSpending: amount,
+            budgeted: 0,
+            available: 0,
+            budgetActivity: 0,
+            variance: amount, // All uncategorized spending is over budget
+            budgetUtilization: 0,
             transactionCount: 1
           })
         }
@@ -161,13 +267,18 @@ export async function GET(request: Request) {
         // Update uncategorized group
         if (groupSpending.has(uncategorizedKey)) {
           const existing = groupSpending.get(uncategorizedKey)!
-          existing.amount += amount
+          existing.actualSpending += amount
           existing.transactionCount += 1
         } else {
           groupSpending.set(uncategorizedKey, {
             id: uncategorizedKey,
             name: 'Uncategorized',
-            amount,
+            actualSpending: amount,
+            budgeted: 0,
+            available: 0,
+            budgetActivity: 0,
+            variance: amount,
+            budgetUtilization: 0,
             transactionCount: 1,
             categories: ['Uncategorized']
           })
@@ -175,18 +286,76 @@ export async function GET(request: Request) {
       }
     })
 
-    // Convert maps to arrays and sort by amount
+    // Add categories with budgets but no transactions
+    categoryGroups.forEach(group => {
+      group.categories.forEach(category => {
+        if (!categorySpending.has(category.id)) {
+          const budgetData = budgetDataMap.get(category.id) || { budgeted: 0, activity: 0, available: 0 }
+          
+          categorySpending.set(category.id, {
+            id: category.id,
+            name: category.name,
+            groupName: group.name,
+            groupId: group.id,
+            actualSpending: 0,
+            budgeted: budgetData.budgeted,
+            available: budgetData.available,
+            budgetActivity: budgetData.activity,
+            variance: -budgetData.budgeted, // Under budget
+            budgetUtilization: 0,
+            transactionCount: 0
+          })
+        }
+      })
+    })
+
+    // Calculate group totals for groups with budgets but no transactions
+    categoryGroups.forEach(group => {
+      if (!groupSpending.has(group.id)) {
+        const groupBudgeted = group.categories.reduce((sum, cat) => {
+          const budgetData = budgetDataMap.get(cat.id) || { budgeted: 0, activity: 0, available: 0 }
+          return sum + budgetData.budgeted
+        }, 0)
+        
+        const groupAvailable = group.categories.reduce((sum, cat) => {
+          const budgetData = budgetDataMap.get(cat.id) || { budgeted: 0, activity: 0, available: 0 }
+          return sum + budgetData.available
+        }, 0)
+        
+        const groupActivity = group.categories.reduce((sum, cat) => {
+          const budgetData = budgetDataMap.get(cat.id) || { budgeted: 0, activity: 0, available: 0 }
+          return sum + budgetData.activity
+        }, 0)
+
+        if (groupBudgeted > 0) {
+          groupSpending.set(group.id, {
+            id: group.id,
+            name: group.name,
+            actualSpending: 0,
+            budgeted: groupBudgeted,
+            available: groupAvailable,
+            budgetActivity: groupActivity,
+            variance: -groupBudgeted, // Under budget
+            budgetUtilization: 0,
+            transactionCount: 0,
+            categories: group.categories.map(cat => cat.name)
+          })
+        }
+      }
+    })
+
+    // Convert maps to arrays and sort by actual spending
     const categoriesData = Array.from(categorySpending.values())
-      .sort((a, b) => b.amount - a.amount)
+      .sort((a, b) => b.actualSpending - a.actualSpending)
 
     const groupsData = Array.from(groupSpending.values())
-      .sort((a, b) => b.amount - a.amount)
+      .sort((a, b) => b.actualSpending - a.actualSpending)
 
     // Fetch available categories and accounts for filters
     const categories = await prisma.category.findMany({
       where: {
         categoryGroup: {
-          groupId: userMembership.groupId,
+          groupId: targetGroupId,
           isHidden: false,
         },
         isHidden: false,
@@ -205,7 +374,7 @@ export async function GET(request: Request) {
 
     const accounts = await prisma.budgetAccount.findMany({
       where: {
-        groupId: userMembership.groupId,
+        groupId: targetGroupId,
         isClosed: false,
       },
       select: {
@@ -218,14 +387,32 @@ export async function GET(request: Request) {
       },
     })
 
+    // Calculate budget performance metrics
+    const totalVariance = totalActualSpending - totalBudgeted
+    const overallBudgetUtilization = totalBudgeted > 0 ? (totalActualSpending / totalBudgeted) * 100 : 0
+    const categoriesOverBudget = categoriesData.filter(cat => cat.variance > 0).length
+    const categoriesUnderBudget = categoriesData.filter(cat => cat.variance < 0).length
+
     return NextResponse.json({
       month: monthStart,
-      totalSpending,
+      // Transaction data
+      totalSpending: totalActualSpending,
+      transactionCount: transactions.length,
+      // Budget data
+      totalBudgeted,
+      totalBudgetActivity,
+      totalAvailable,
+      // Performance metrics
+      totalVariance,
+      overallBudgetUtilization,
+      categoriesOverBudget,
+      categoriesUnderBudget,
+      // Detailed data
       categories: categoriesData,
       groups: groupsData,
+      // Filter options
       availableCategories: categories,
       availableAccounts: accounts,
-      transactionCount: transactions.length,
     })
   } catch (error) {
     console.error('Failed to fetch spending data:', error)

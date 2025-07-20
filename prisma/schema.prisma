@@ -134,6 +134,9 @@ model BudgetGroup {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Message retention policy
+  messageRetentionPolicy Json? @default("{\"anonymizedRetentionHours\": 24, \"allowMemberExport\": true, \"warnOnUserDeletion\": true}")
+
   // Group members and ownership
   members GroupMember[]
   invitations GroupInvitation[]
@@ -407,17 +410,24 @@ model Message {
   updatedAt DateTime @updatedAt
   isRead    Boolean  @default(false)
 
-  // Who sent the message
-  senderId  String
-  sender    User     @relation("MessagesSent", fields: [senderId], references: [id], onDelete: Cascade)
+  // Enhanced sender handling for anonymization
+  senderId     String?
+  sender       User?    @relation("MessagesSent", fields: [senderId], references: [id], onDelete: SetNull)
+  senderName   String?  // Fallback name for anonymized users
+  senderEmail  String?  // Fallback email for anonymized users
+  
+  // Anonymization tracking
+  isAnonymized    Boolean   @default(false)
+  anonymizedAt    DateTime?
+  scheduledDelete DateTime? // When to permanently delete anonymized message
 
   // Which group the message belongs to
   groupId   String
   group     BudgetGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
-  // Message thread/reply functionality (optional)
+  // Message thread/reply functionality
   replyToId String?
-  replyTo   Message? @relation("MessageReplies", fields: [replyToId], references: [id])
+  replyTo   Message? @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   replies   Message[] @relation("MessageReplies")
 
   @@map("messages")

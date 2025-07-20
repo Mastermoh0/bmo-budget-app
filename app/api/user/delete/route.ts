@@ -3,8 +3,60 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
-// DELETE /api/user/delete - Delete user account and all associated data
-export async function DELETE(request: NextRequest) {
+// Check if user has significant message activity that should trigger warnings
+async function checkUserMessageActivity(userId: string) {
+  const messageCount = await prisma.message.count({
+    where: { senderId: userId }
+  })
+  
+  const recentMessages = await prisma.message.count({
+    where: {
+      senderId: userId,
+      createdAt: {
+        gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
+      }
+    }
+  })
+
+  return {
+    totalMessages: messageCount,
+    recentMessages,
+    shouldWarn: messageCount > 10 || recentMessages > 3
+  }
+}
+
+// Anonymize user messages instead of deleting them
+async function anonymizeUserMessages(userId: string, tx: any) {
+  // Get user info for anonymization
+  const user = await tx.user.findUnique({
+    where: { id: userId },
+    select: { name: true, email: true }
+  })
+
+  if (!user) return
+
+  // Calculate deletion time (24 hours from now)
+  const scheduledDelete = new Date(Date.now() + 24 * 60 * 60 * 1000)
+
+  // Anonymize messages instead of deleting
+  const updateResult = await tx.message.updateMany({
+    where: { senderId: userId },
+    data: {
+      senderId: null,
+      senderName: user.name || '[Removed User]',
+      senderEmail: '[deleted]',
+      isAnonymized: true,
+      anonymizedAt: new Date(),
+      scheduledDelete: scheduledDelete
+    }
+  })
+
+  console.log(`📝 Anonymized ${updateResult.count} messages for user ${userId}`)
+  return updateResult.count
+}
+
+// GET /api/user/delete - Check deletion warnings
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
@@ -12,10 +64,96 @@ export async function DELETE(request: NextRequest) {
     }
 
     const userId = session.user.id
+    const messageActivity = await checkUserMessageActivity(userId)
+
+    // Get user's owned groups with members
+    const userBudgetGroups = await prisma.budgetGroup.findMany({
+      where: {
+        members: {
+          some: {
+            userId,
+            role: 'OWNER'
+          }
+        }
+      },
+      include: {
+        members: {
+          include: {
+            user: {
+              select: { name: true, email: true }
+            }
+          }
+        },
+        _count: {
+          select: {
+            messages: true,
+            transactions: true,
+            budgetAccounts: true
+          }
+        }
+      }
+    })
+
+    const groupsWithOtherMembers = userBudgetGroups.filter(group => 
+      group.members.length > 1
+    )
+
+    return NextResponse.json({
+      messageActivity,
+      ownedGroups: userBudgetGroups.length,
+      groupsWithOtherMembers: groupsWithOtherMembers.length,
+      groupDetails: groupsWithOtherMembers.map(group => ({
+        id: group.id,
+        name: group.name,
+        memberCount: group.members.length,
+        messageCount: group._count.messages,
+        transactionCount: group._count.transactions,
+        accountCount: group._count.budgetAccounts,
+        members: group.members.filter(m => m.userId !== userId).map(m => ({
+          name: m.user.name,
+          email: m.user.email,
+          role: m.role
+        }))
+      })),
+      warnings: {
+        hasMessages: messageActivity.shouldWarn,
+        hasOwnedGroupsWithMembers: groupsWithOtherMembers.length > 0,
+        messageCount: messageActivity.totalMessages,
+        recentMessageCount: messageActivity.recentMessages
+      }
+    })
+
+  } catch (error) {
+    console.error('❌ Failed to check deletion requirements:', error)
+    return NextResponse.json({ 
+      error: 'Failed to check deletion requirements',
+      details: error.message
+    }, { status: 500 })
+  }
+}
+
+// DELETE /api/user/delete - Delete user account with improved message handling
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { confirmDeletion = false, transferOwnership = [] } = body
+
+    const userId = session.user.id
     console.log(`🗑️ Starting account deletion for user: ${userId}`)
 
+    // Check for warnings if not confirmed
+    if (!confirmDeletion) {
+      const warnings = await this.GET(request)
+      return warnings
+    }
+
     // Delete user and all associated data in a transaction
-    await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       // 1. Delete all authentication related data
       console.log('📝 Cleaning up auth data...')
       await tx.verificationToken.deleteMany({ where: { userId } })
@@ -23,7 +161,11 @@ export async function DELETE(request: NextRequest) {
       await tx.session.deleteMany({ where: { userId } })
       await tx.account.deleteMany({ where: { userId } })
 
-      // 2. Find all budget groups the user owns
+      // 2. Anonymize user messages instead of deleting them
+      console.log('📝 Anonymizing user messages...')
+      const anonymizedCount = await anonymizeUserMessages(userId, tx)
+
+      // 3. Find all budget groups the user owns
       const userBudgetGroups = await tx.budgetGroup.findMany({
         where: {
           members: {
@@ -33,86 +175,105 @@ export async function DELETE(request: NextRequest) {
             }
           }
         },
-        select: { id: true }
+        select: { id: true, name: true }
       })
       
       console.log(`📊 Found ${userBudgetGroups.length} budget groups to delete`)
 
-      // 3. Delete all data from owned budget groups
+      // 4. Handle ownership transfer or delete groups
       for (const group of userBudgetGroups) {
         const groupId = group.id
-        console.log(`🗑️ Deleting data for group: ${groupId}`)
+        const transferTo = transferOwnership.find(t => t.groupId === groupId)?.newOwnerId
 
-        // Delete messages first (no dependencies)
-        await tx.message.deleteMany({
-          where: { groupId }
-        })
+        if (transferTo) {
+          // Transfer ownership instead of deleting
+          console.log(`👑 Transferring ownership of group ${groupId} to ${transferTo}`)
+          await tx.groupMember.update({
+            where: {
+              userId_groupId: {
+                userId: transferTo,
+                groupId: groupId
+              }
+            },
+            data: { role: 'OWNER' }
+          })
+        } else {
+          // Delete group and all its data
+          console.log(`🗑️ Deleting data for group: ${groupId}`)
 
-        // Delete transaction splits before transactions
-        await tx.transactionSplit.deleteMany({
-          where: {
-            transaction: {
-              groupId
+          // Delete transaction splits before transactions
+          await tx.transactionSplit.deleteMany({
+            where: {
+              transaction: {
+                groupId
+              }
             }
-          }
-        })
+          })
 
-        // Delete transactions
-        await tx.transaction.deleteMany({
-          where: { groupId }
-        })
+          // Delete transactions
+          await tx.transaction.deleteMany({
+            where: { groupId }
+          })
 
-        // Delete money moves
-        await tx.moneyMove.deleteMany({
-          where: { groupId }
-        })
+          // Delete money moves
+          await tx.moneyMove.deleteMany({
+            where: { groupId }
+          })
 
-        // Delete goals
-        await tx.goal.deleteMany({
-          where: { groupId }
-        })
+          // Delete goals
+          await tx.goal.deleteMany({
+            where: { groupId }
+          })
 
-        // Delete budgets
-        await tx.budget.deleteMany({
-          where: { groupId }
-        })
+          // Delete budgets
+          await tx.budget.deleteMany({
+            where: { groupId }
+          })
 
-        // Delete categories before category groups
-        await tx.category.deleteMany({
-          where: {
-            categoryGroup: {
-              groupId
+          // Delete categories before category groups
+          await tx.category.deleteMany({
+            where: {
+              categoryGroup: {
+                groupId
+              }
             }
-          }
-        })
+          })
 
-        // Delete category groups
-        await tx.categoryGroup.deleteMany({
-          where: { groupId }
-        })
+          // Delete category groups
+          await tx.categoryGroup.deleteMany({
+            where: { groupId }
+          })
 
-        // Delete budget accounts
-        await tx.budgetAccount.deleteMany({
-          where: { groupId }
-        })
+          // Delete budget accounts
+          await tx.budgetAccount.deleteMany({
+            where: { groupId }
+          })
 
-        // Delete group invitations
-        await tx.groupInvitation.deleteMany({
-          where: { groupId }
-        })
+          // Delete notes
+          await tx.note.deleteMany({
+            where: { groupId }
+          })
 
-        // Delete group members
-        await tx.groupMember.deleteMany({
-          where: { groupId }
-        })
+          // Delete group invitations
+          await tx.groupInvitation.deleteMany({
+            where: { groupId }
+          })
 
-        // Finally delete the group itself
-        await tx.budgetGroup.delete({
-          where: { id: groupId }
-        })
+          // Delete group members
+          await tx.groupMember.deleteMany({
+            where: { groupId }
+          })
+
+          // Messages will be handled by the anonymization above
+
+          // Finally delete the group itself
+          await tx.budgetGroup.delete({
+            where: { id: groupId }
+          })
+        }
       }
 
-      // 4. Delete invitations sent by or accepted by this user
+      // 5. Delete invitations sent by or accepted by this user
       await tx.groupInvitation.deleteMany({
         where: {
           OR: [
@@ -122,14 +283,9 @@ export async function DELETE(request: NextRequest) {
         }
       })
 
-      // 5. Remove user from any groups they're a member of (but don't own)
+      // 6. Remove user from any groups they're a member of (but don't own)
       await tx.groupMember.deleteMany({
         where: { userId }
-      })
-
-      // 6. Delete user's messages
-      await tx.message.deleteMany({
-        where: { senderId: userId }
       })
 
       // 7. Finally, delete the user account itself
@@ -138,11 +294,18 @@ export async function DELETE(request: NextRequest) {
       })
 
       console.log('✅ Account deletion completed successfully')
+      
+      return {
+        groupsDeleted: userBudgetGroups.filter(g => !transferOwnership.find(t => t.groupId === g.id)).length,
+        groupsTransferred: transferOwnership.length,
+        messagesAnonymized: anonymizedCount
+      }
     })
 
     return NextResponse.json({ 
       success: true,
-      message: 'Account deleted successfully' 
+      message: 'Account deleted successfully',
+      details: result
     })
 
   } catch (error) {

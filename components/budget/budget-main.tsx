@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { ChevronDown, ChevronRight, Target, Plus, Eye, EyeOff } from 'lucide-react'
-import { formatCurrency, getCurrentMonth } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils'
+import { useUserRole } from '@/hooks/useUserRole'
 import { CategoryGroupEditor } from './CategoryGroupEditor'
 import { CategoryEditor } from './CategoryEditor'
 import { BudgetAmountInput } from './BudgetAmountInput'
@@ -38,20 +39,22 @@ interface BudgetData {
 }
 
 interface BudgetMainProps {
-  selectedPlanId?: string
+  selectedPlanId: string
+  currentMonth: Date
   showTargetPanel: boolean
   setShowTargetPanel: (show: boolean) => void
   selectedCategories: Set<string>
   setSelectedCategories: (categories: Set<string>) => void
   selectedGroups: Set<string>
   setSelectedGroups: (groups: Set<string>) => void
-  onBudgetDataChange?: (data: BudgetData | null) => void
+  onBudgetDataChange?: (data: BudgetData) => void
   onAvailableToAssignChange?: (amount: number) => void
   refreshTrigger?: number
 }
 
 export function BudgetMain({ 
   selectedPlanId,
+  currentMonth,
   showTargetPanel,
   setShowTargetPanel,
   selectedCategories,
@@ -63,10 +66,10 @@ export function BudgetMain({
   refreshTrigger
 }: BudgetMainProps) {
   const router = useRouter()
+  const { canEdit, isViewer, userRole, loading: roleLoading } = useUserRole()
   const [expandedGroups, setExpandedGroups] = useState<string[]>([])
   const [budgetData, setBudgetData] = useState<BudgetData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [currentMonth] = useState(getCurrentMonth())
   const [hiddenGroups, setHiddenGroups] = useState<Set<string>>(new Set())
   const [showHidden, setShowHidden] = useState(false)
   const [showQuickBudget, setShowQuickBudget] = useState(false)
@@ -747,13 +750,15 @@ export function BudgetMain({
 
   return (
     <div className="flex-1 bg-white overflow-auto">
-      {/* Add Category Group Button - Now at the top */}
-      <CategoryGroupEditor
-        group={null}
-        onUpdate={handleUpdateGroup}
-        onDelete={handleDeleteGroup}
-        onAdd={handleAddGroup}
-      />
+      {/* Add Category Group Button - Only for editors and owners */}
+      {canEdit && (
+        <CategoryGroupEditor
+          group={null}
+          onUpdate={handleUpdateGroup}
+          onDelete={handleDeleteGroup}
+          onAdd={handleAddGroup}
+        />
+      )}
 
       {/* Hidden Categories Toggle */}
       <div className="flex justify-between items-center px-6 py-3 bg-gray-50 border-b border-gray-200">
@@ -841,11 +846,18 @@ export function BudgetMain({
                         <Target className="w-3 h-3 text-ynab-gray-400" />
                       </div>
                       <div className="text-right">
-                        <BudgetAmountInput
-                          categoryId={category.id}
-                          initialAmount={category.budgeted}
-                          onUpdate={handleUpdateBudget}
-                        />
+                        {canEdit ? (
+                          <BudgetAmountInput
+                            categoryId={category.id}
+                            initialAmount={category.budgeted}
+                            month={currentMonth.toISOString()}
+                            onUpdate={handleUpdateBudget}
+                          />
+                        ) : (
+                          <div className="py-2 px-3 text-right text-ynab-gray-700">
+                            {formatCurrency(category.budgeted)}
+                          </div>
+                        )}
                       </div>
                       <div className={`text-right ${category.activity < 0 ? 'text-ynab-red' : 'text-ynab-green'}`}>
                         {formatCurrency(category.activity)}

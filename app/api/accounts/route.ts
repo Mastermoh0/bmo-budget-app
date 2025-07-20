@@ -11,22 +11,42 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Always get accounts from user's first plan (shared across all plans)
-    // This represents the user's real bank accounts
-    const userMembership = await prisma.groupMember.findFirst({
-      where: { userId: session.user.id },
-      include: { group: true },
-      orderBy: { joinedAt: 'asc' } // Get the first plan (from onboarding)
-    })
+    // Check for planId parameter to fetch accounts from specific plan
+    const { searchParams } = new URL(request.url)
+    const planId = searchParams.get('planId')
 
-    if (!userMembership) {
-      // Return empty accounts if user doesn't have a budget group yet
-      return NextResponse.json([])
+    let userMembership;
+
+    if (planId) {
+      // Get membership for the specific plan if planId is provided
+      userMembership = await prisma.groupMember.findFirst({
+        where: { 
+          userId: session.user.id,
+          groupId: planId
+        },
+        include: { group: true }
+      })
+      
+      if (!userMembership) {
+        return NextResponse.json({ error: 'Plan not found or access denied' }, { status: 404 })
+      }
+    } else {
+      // Default: get accounts from user's first plan (shared across all plans)
+      userMembership = await prisma.groupMember.findFirst({
+        where: { userId: session.user.id },
+        include: { group: true },
+        orderBy: { joinedAt: 'asc' } // Get the first plan (from onboarding)
+      })
+
+      if (!userMembership) {
+        // Return empty accounts if user doesn't have a budget group yet
+        return NextResponse.json([])
+      }
     }
 
     const accounts = await prisma.budgetAccount.findMany({
       where: {
-        groupId: userMembership.groupId, // Always use first plan's group for accounts
+        groupId: userMembership.groupId, // Use the determined group ID
       },
       orderBy: [
         { isOnBudget: 'desc' }, // Budget accounts first
@@ -103,6 +123,14 @@ export async function POST(request: Request) {
         }
       })
       budgetGroupId = budgetGroup.id
+    } else {
+      // Check if user has permission to create accounts (VIEWER role cannot modify)
+      if (userMembership.role === 'VIEWER') {
+        return NextResponse.json({ 
+          error: 'Access denied. Viewers cannot create or modify accounts.',
+          userRole: userMembership.role 
+        }, { status: 403 })
+      }
     }
 
     // Validate required fields

@@ -58,12 +58,6 @@ export default async function SocketHandler(req: NextApiRequest, res: NextApiRes
         if (membership) {
           socket.join(`group-${groupId}`)
           console.log(`User ${userId} joined group ${groupId}`)
-          
-          // Notify other members that user is online
-          socket.to(`group-${groupId}`).emit('user-online', {
-            userId: userId,
-            groupId: groupId
-          })
         }
       } catch (error) {
         console.error('Error joining group:', error)
@@ -130,15 +124,6 @@ export default async function SocketHandler(req: NextApiRequest, res: NextApiRes
         console.error('Error sending message:', error)
         socket.emit('error', { message: 'Failed to send message' })
       }
-    })
-
-    // Handle typing indicators
-    socket.on('typing', (data) => {
-      const { groupId, userId, isTyping } = data
-      socket.to(`group-${groupId}`).emit('user-typing', {
-        userId,
-        isTyping
-      })
     })
 
     // Handle user disconnect

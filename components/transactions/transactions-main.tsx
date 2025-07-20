@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { Plus, Edit3, Trash2, Search, Check, X, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { useUserRole } from '@/hooks/useUserRole'
 import { TransactionForm } from './transaction-form'
 
 interface Transaction {
@@ -67,6 +68,8 @@ const clearingStatusColors = {
 
 export function TransactionsMain() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const { canEdit, isViewer } = useUserRole()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -83,6 +86,15 @@ export function TransactionsMain() {
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [searchTerm, setSearchTerm] = useState('')
 
+  // Get current plan ID from URL or localStorage
+  const getCurrentPlanId = () => {
+    const urlPlanId = searchParams.get('plan')
+    if (urlPlanId) return urlPlanId
+    
+    // Fallback to localStorage
+    return localStorage.getItem('lastSelectedPlan')
+  }
+
   // Handle authentication/user errors by redirecting to sign-in
   const handleAuthError = async (error: string) => {
     console.log('Authentication error detected:', error)
@@ -98,7 +110,7 @@ export function TransactionsMain() {
       fetchAccounts(),
       fetchCategories(),
     ])
-  }, [])
+  }, [searchParams]) // Re-fetch when URL parameters change
 
   const fetchTransactions = async () => {
     try {
@@ -131,10 +143,16 @@ export function TransactionsMain() {
 
   const fetchAccounts = async () => {
     try {
-      const response = await fetch('/api/accounts')
+      const currentPlanId = getCurrentPlanId()
+      const url = currentPlanId ? `/api/accounts?planId=${currentPlanId}` : '/api/accounts'
+      
+      console.log('🔍 TransactionsMain: Fetching accounts for plan:', currentPlanId)
+      
+      const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
         setAccounts(data.filter((account: Account & { isClosed: boolean }) => !account.isClosed))
+        console.log('✅ TransactionsMain: Accounts loaded:', data.length, 'accounts')
       } else {
         const errorData = await response.json()
         
@@ -303,12 +321,16 @@ export function TransactionsMain() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
-            <p className="text-gray-600">Track your income and expenses</p>
+            <p className="text-gray-600">
+              {isViewer ? 'View transaction history' : 'Track your income and expenses'}
+            </p>
           </div>
-          <Button onClick={handleAddTransaction} className="flex items-center space-x-2">
-            <Plus className="w-4 h-4" />
-            <span>Add Transaction</span>
-          </Button>
+          {canEdit && (
+            <Button onClick={handleAddTransaction} className="flex items-center space-x-2">
+              <Plus className="w-4 h-4" />
+              <span>Add Transaction</span>
+            </Button>
+          )}
         </div>
 
         {/* Filters */}
@@ -450,23 +472,25 @@ export function TransactionsMain() {
                   {formatCurrency(transaction.amount)}
                 </div>
                 
-                <div className="flex items-center justify-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleEditTransaction(transaction)}
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleDeleteTransaction(transaction.id)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+                {canEdit && (
+                  <div className="flex items-center justify-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleEditTransaction(transaction)}
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDeleteTransaction(transaction.id)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             ))}
           </>

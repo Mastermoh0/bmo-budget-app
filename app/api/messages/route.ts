@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Not a member of this group' }, { status: 403 })
     }
 
-    // Get messages for the group
+    // Get messages for the group including anonymized ones
     const messages = await prisma.message.findMany({
       where: {
         groupId: groupId
@@ -114,13 +114,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Not a member of this group' }, { status: 403 })
     }
 
-    // Create the message
+    // Get user info for the message
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { name: true, email: true }
+    })
+
+    // Create the message with current user info
     const message = await prisma.message.create({
       data: {
         content: content.trim(),
         senderId: session.user.id,
+        senderName: user?.name || null,
+        senderEmail: user?.email || null,
         groupId: groupId,
-        replyToId: replyToId || null
+        replyToId: replyToId || null,
+        isAnonymized: false
       },
       include: {
         sender: {

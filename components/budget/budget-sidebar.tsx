@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { 
   Home, 
@@ -17,6 +17,7 @@ import {
   LogOut
 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
+import { useUserRole } from '@/hooks/useUserRole'
 
 interface Account {
   id: string
@@ -27,18 +28,37 @@ interface Account {
 
 export function BudgetSidebar() {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const { canEdit } = useUserRole()
   const [showAccounts, setShowAccounts] = useState(true)
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Get current plan ID from URL or localStorage
+  const getCurrentPlanId = () => {
+    const urlPlanId = searchParams.get('plan')
+    if (urlPlanId) return urlPlanId
+    
+    // Fallback to localStorage
+    return localStorage.getItem('lastSelectedPlan')
+  }
 
   // Fetch accounts from API
   useEffect(() => {
     async function fetchAccounts() {
       try {
-        const response = await fetch('/api/accounts')
+        const currentPlanId = getCurrentPlanId()
+        const url = currentPlanId ? `/api/accounts?planId=${currentPlanId}` : '/api/accounts'
+        
+        console.log('🔍 BudgetSidebar: Fetching accounts for plan:', currentPlanId)
+        
+        const response = await fetch(url)
         if (response.ok) {
           const data = await response.json()
           setAccounts(data)
+          console.log('✅ BudgetSidebar: Accounts loaded:', data.length, 'accounts')
+        } else {
+          console.error('❌ BudgetSidebar: Failed to fetch accounts:', response.status)
         }
       } catch (error) {
         console.error('Failed to fetch accounts:', error)
@@ -48,7 +68,7 @@ export function BudgetSidebar() {
     }
 
     fetchAccounts()
-  }, [])
+  }, [searchParams]) // Re-fetch when URL parameters change
 
   const navigation = [
     { id: 'budget', name: 'Plan', icon: Home, href: '/' },
@@ -161,10 +181,12 @@ export function BudgetSidebar() {
                   </div>
                 </div>
 
-                <Link href="/accounts" className="w-full flex items-center space-x-2 p-2 text-ynab-blue hover:bg-ynab-gray-50 rounded-lg transition-colors">
-                  <PlusCircle className="w-4 h-4" />
-                  <span className="text-sm">Add Account</span>
-                </Link>
+                {canEdit && (
+                  <Link href="/accounts" className="w-full flex items-center space-x-2 p-2 text-ynab-blue hover:bg-ynab-gray-50 rounded-lg transition-colors">
+                    <PlusCircle className="w-4 h-4" />
+                    <span className="text-sm">Add Account</span>
+                  </Link>
+                )}
               </>
             )}
           </div>

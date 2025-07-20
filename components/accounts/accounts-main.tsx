@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { Plus, Edit3, Trash2, CreditCard, PiggyBank, Banknote, TrendingUp, Home, DollarSign } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { formatCurrency } from '@/lib/utils'
+import { useUserRole } from '@/hooks/useUserRole'
 import { AccountForm } from './account-form'
 
 interface Account {
@@ -48,6 +49,8 @@ const accountTypeLabels = {
 
 export function AccountsMain() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const { canEdit, isViewer, userRole } = useUserRole()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -56,6 +59,15 @@ export function AccountsMain() {
   // Confirmation modal state
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
   const [accountToDelete, setAccountToDelete] = useState<string | null>(null)
+
+  // Get current plan ID from URL or localStorage
+  const getCurrentPlanId = () => {
+    const urlPlanId = searchParams.get('plan')
+    if (urlPlanId) return urlPlanId
+    
+    // Fallback to localStorage
+    return localStorage.getItem('lastSelectedPlan')
+  }
 
   // Handle authentication/user errors by redirecting to sign-in
   const handleAuthError = async (error: string) => {
@@ -69,15 +81,21 @@ export function AccountsMain() {
   // Fetch accounts from API
   useEffect(() => {
     fetchAccounts()
-  }, [])
+  }, [searchParams]) // Re-fetch when URL parameters change
 
   const fetchAccounts = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/accounts')
+      const currentPlanId = getCurrentPlanId()
+      const url = currentPlanId ? `/api/accounts?planId=${currentPlanId}` : '/api/accounts'
+      
+      console.log('🔍 AccountsMain: Fetching accounts for plan:', currentPlanId)
+      
+      const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
         setAccounts(data)
+        console.log('✅ AccountsMain: Accounts loaded:', data.length, 'accounts')
       } else {
         const errorData = await response.json()
         
@@ -233,12 +251,16 @@ export function AccountsMain() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
-            <p className="text-gray-600">Manage your bank accounts, credit cards, and investments</p>
+            <p className="text-gray-600">
+              {isViewer ? 'View all accounts and balances' : 'Manage your bank accounts, credit cards, and investments'}
+            </p>
           </div>
-          <Button onClick={handleAddAccount} className="flex items-center space-x-2">
-            <Plus className="w-4 h-4" />
-            <span>Add Account</span>
-          </Button>
+          {canEdit && (
+            <Button onClick={handleAddAccount} className="flex items-center space-x-2">
+              <Plus className="w-4 h-4" />
+              <span>Add Account</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -315,6 +337,7 @@ export function AccountsMain() {
                   account={account}
                   onEdit={() => handleEditAccount(account)}
                   onDelete={() => handleDeleteAccount(account.id)}
+                  canEdit={canEdit}
                 />
               ))}
             </div>
@@ -346,6 +369,7 @@ export function AccountsMain() {
                   account={account}
                   onEdit={() => handleEditAccount(account)}
                   onDelete={() => handleDeleteAccount(account.id)}
+                  canEdit={canEdit}
                 />
               ))}
             </div>
@@ -374,6 +398,7 @@ export function AccountsMain() {
                   onEdit={() => handleEditAccount(account)}
                   onDelete={() => handleDeleteAccount(account.id)}
                   isClosed
+                  canEdit={canEdit}
                 />
               ))}
             </div>
@@ -416,9 +441,10 @@ interface AccountCardProps {
   onEdit: () => void
   onDelete: () => void
   isClosed?: boolean
+  canEdit?: boolean
 }
 
-function AccountCard({ account, onEdit, onDelete, isClosed = false }: AccountCardProps) {
+function AccountCard({ account, onEdit, onDelete, isClosed = false, canEdit = true }: AccountCardProps) {
   const IconComponent = accountTypeIcons[account.type as keyof typeof accountTypeIcons] || DollarSign
   
   return (
@@ -439,24 +465,26 @@ function AccountCard({ account, onEdit, onDelete, isClosed = false }: AccountCar
           </div>
         </div>
         
-        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onEdit}
-            className="h-8 w-8"
-          >
-            <Edit3 className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onDelete}
-            className="h-8 w-8 text-red-600 hover:text-red-700"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
+        {canEdit && (
+          <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onEdit}
+              className="h-8 w-8"
+            >
+              <Edit3 className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onDelete}
+              className="h-8 w-8 text-red-600 hover:text-red-700"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
       </div>
       
       <div className="mt-4">

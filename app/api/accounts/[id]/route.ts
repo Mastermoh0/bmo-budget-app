@@ -63,6 +63,14 @@ export async function PUT(
       return NextResponse.json({ error: 'No budget group found' }, { status: 404 })
     }
 
+    // Check if user has permission to modify accounts (VIEWER role cannot modify)
+    if (userMembership.role === 'VIEWER') {
+      return NextResponse.json({ 
+        error: 'Access denied. Viewers cannot modify accounts.',
+        userRole: userMembership.role 
+      }, { status: 403 })
+    }
+
     const body = await request.json()
     const { 
       name, 

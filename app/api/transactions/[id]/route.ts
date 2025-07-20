@@ -207,6 +207,14 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: 'No budget group found' }, { status: 404 })
     }
 
+    // Check if user has permission to modify transactions (VIEWER role cannot modify)
+    if (userMembership.role === 'VIEWER') {
+      return NextResponse.json({ 
+        error: 'Access denied. Viewers cannot modify transactions.',
+        userRole: userMembership.role 
+      }, { status: 403 })
+    }
+
     const body = await request.json()
     const { 
       date,
@@ -328,6 +336,14 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
     if (!userMembership) {
       return NextResponse.json({ error: 'No budget group found' }, { status: 404 })
+    }
+
+    // Check if user has permission to delete transactions (VIEWER role cannot modify)
+    if (userMembership.role === 'VIEWER') {
+      return NextResponse.json({ 
+        error: 'Access denied. Viewers cannot delete transactions.',
+        userRole: userMembership.role 
+      }, { status: 403 })
     }
 
     // Get the transaction to reverse its effects
