@@ -102,24 +102,40 @@ export async function GET(request: NextRequest) {
       messageActivity,
       ownedGroups: userBudgetGroups.length,
       groupsWithOtherMembers: groupsWithOtherMembers.length,
-      groupDetails: groupsWithOtherMembers.map(group => ({
-        id: group.id,
-        name: group.name,
-        memberCount: group.members.length,
-        messageCount: group._count.messages,
-        transactionCount: group._count.transactions,
-        accountCount: group._count.budgetAccounts,
-        members: group.members.filter(m => m.userId !== userId).map(m => ({
-          name: m.user.name,
-          email: m.user.email,
-          role: m.role
-        }))
-      })),
+      groupDetails: groupsWithOtherMembers.map(group => {
+        const otherMembers = group.members.filter(m => m.userId !== userId)
+        // Determine who will become the new owner
+        const nextOwner = otherMembers.find(m => m.role === 'EDITOR') || 
+                         otherMembers.sort((a, b) => new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime())[0]
+        
+        return {
+          id: group.id,
+          name: group.name,
+          memberCount: group.members.length,
+          messageCount: group._count.messages,
+          transactionCount: group._count.transactions,
+          accountCount: group._count.budgetAccounts,
+          newOwner: nextOwner ? {
+            name: nextOwner.user.name,
+            email: nextOwner.user.email,
+            role: nextOwner.role,
+            reason: nextOwner.role === 'EDITOR' ? 'Oldest Editor' : 'Oldest Member'
+          } : null,
+          members: otherMembers.map(m => ({
+            name: m.user.name,
+            email: m.user.email,
+            role: m.role
+          }))
+        }
+      }),
       warnings: {
         hasMessages: messageActivity.shouldWarn,
         hasOwnedGroupsWithMembers: groupsWithOtherMembers.length > 0,
         messageCount: messageActivity.totalMessages,
-        recentMessageCount: messageActivity.recentMessages
+        recentMessageCount: messageActivity.recentMessages,
+        ownershipTransferInfo: groupsWithOtherMembers.length > 0 ? 
+          `Your ${groupsWithOtherMembers.length} budget plan(s) will be automatically transferred to other members.` : 
+          null
       }
     })
 
@@ -140,16 +156,99 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const { confirmDeletion = false, transferOwnership = [] } = body
+    // Safely parse JSON body - handle cases where body might be empty
+    let body = {}
+    try {
+      const text = await request.text()
+      if (text) {
+        body = JSON.parse(text)
+      }
+    } catch (error) {
+      console.log('No JSON body provided, using defaults')
+    }
+    
+    const { confirmDeletion = false } = body
 
     const userId = session.user.id
     console.log(`🗑️ Starting account deletion for user: ${userId}`)
 
     // Check for warnings if not confirmed
     if (!confirmDeletion) {
-      const warnings = await this.GET(request)
-      return warnings
+      // Return warnings instead of proceeding with deletion
+      const messageActivity = await checkUserMessageActivity(userId)
+      
+      const userBudgetGroups = await prisma.budgetGroup.findMany({
+        where: {
+          members: {
+            some: {
+              userId,
+              role: 'OWNER'
+            }
+          }
+        },
+        include: {
+          members: {
+            include: {
+              user: {
+                select: { name: true, email: true }
+              }
+            }
+          },
+          _count: {
+            select: {
+              messages: true,
+              transactions: true,
+              budgetAccounts: true
+            }
+          }
+        }
+      })
+
+      const groupsWithOtherMembers = userBudgetGroups.filter(group => 
+        group.members.length > 1
+      )
+
+      return NextResponse.json({
+        requiresConfirmation: true,
+        messageActivity,
+        ownedGroups: userBudgetGroups.length,
+        groupsWithOtherMembers: groupsWithOtherMembers.length,
+        groupDetails: groupsWithOtherMembers.map(group => {
+          const otherMembers = group.members.filter(m => m.userId !== userId)
+          // Determine who will become the new owner
+          const nextOwner = otherMembers.find(m => m.role === 'EDITOR') || 
+                           otherMembers.sort((a, b) => new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime())[0]
+          
+          return {
+            id: group.id,
+            name: group.name,
+            memberCount: group.members.length,
+            messageCount: group._count.messages,
+            transactionCount: group._count.transactions,
+            accountCount: group._count.budgetAccounts,
+            newOwner: nextOwner ? {
+              name: nextOwner.user.name,
+              email: nextOwner.user.email,
+              role: nextOwner.role,
+              reason: nextOwner.role === 'EDITOR' ? 'Oldest Editor' : 'Oldest Member'
+            } : null,
+            members: otherMembers.map(m => ({
+              name: m.user.name,
+              email: m.user.email,
+              role: m.role
+            }))
+          }
+        }),
+        warnings: {
+          hasMessages: messageActivity.shouldWarn,
+          hasOwnedGroupsWithMembers: groupsWithOtherMembers.length > 0,
+          messageCount: messageActivity.totalMessages,
+          recentMessageCount: messageActivity.recentMessages,
+          ownershipTransferInfo: groupsWithOtherMembers.length > 0 ? 
+            `Your ${groupsWithOtherMembers.length} budget plan(s) will be automatically transferred to other members.` : 
+            null
+        }
+      })
     }
 
     // Delete user and all associated data in a transaction
@@ -180,26 +279,48 @@ export async function DELETE(request: NextRequest) {
       
       console.log(`📊 Found ${userBudgetGroups.length} budget groups to delete`)
 
-      // 4. Handle ownership transfer or delete groups
+      // 4. Handle ownership transfer for groups with other members
       for (const group of userBudgetGroups) {
         const groupId = group.id
-        const transferTo = transferOwnership.find(t => t.groupId === groupId)?.newOwnerId
+        
+        // Get all other members of this group (excluding the user being deleted)
+        const otherMembers = await tx.groupMember.findMany({
+          where: {
+            groupId: groupId,
+            userId: { not: userId }
+          },
+          include: {
+            user: {
+              select: { name: true, email: true }
+            }
+          },
+          orderBy: { joinedAt: 'asc' } // Oldest first
+        })
 
-        if (transferTo) {
-          // Transfer ownership instead of deleting
-          console.log(`👑 Transferring ownership of group ${groupId} to ${transferTo}`)
+        if (otherMembers.length > 0) {
+          // Find the next owner by priority: Editors first, then Viewers
+          const nextOwner = otherMembers.find(m => m.role === 'EDITOR') || otherMembers[0]
+          
+          console.log(`👑 Auto-transferring ownership of "${group.name}" from deleted user to ${nextOwner.user.name} (${nextOwner.user.email})`)
+          console.log(`📊 Transfer reason: ${nextOwner.role === 'EDITOR' ? 'Oldest Editor' : 'Oldest Member'} (joined: ${nextOwner.joinedAt})`)
+          
+          // Transfer ownership to the selected member
           await tx.groupMember.update({
             where: {
               userId_groupId: {
-                userId: transferTo,
+                userId: nextOwner.userId,
                 groupId: groupId
               }
             },
             data: { role: 'OWNER' }
           })
+
+          // Log the ownership transfer for audit purposes
+          console.log(`✅ Successfully transferred ownership of group ${groupId} to user ${nextOwner.userId}`)
+          
         } else {
-          // Delete group and all its data
-          console.log(`🗑️ Deleting data for group: ${groupId}`)
+          // No other members - safe to delete the group completely
+          console.log(`🗑️ No other members in group "${group.name}" - deleting group data`)
 
           // Delete transaction splits before transactions
           await tx.transactionSplit.deleteMany({

@@ -5,6 +5,7 @@ import { X, ArrowRightLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
+import { CategorySearchInput } from './category-search-input'
 
 interface Transaction {
   id: string
@@ -12,9 +13,7 @@ interface Transaction {
   amount: number
   memo?: string
   payee?: string
-  cleared: string
   approved: boolean
-  flagColor?: string
   fromAccount: {
     id: string
     name: string
@@ -59,15 +58,7 @@ interface TransactionFormProps {
 
 
 
-const flagColors = [
-  { value: '', label: 'No Flag' },
-  { value: '#ef4444', label: 'Red' },
-  { value: '#f97316', label: 'Orange' },
-  { value: '#eab308', label: 'Yellow' },
-  { value: '#22c55e', label: 'Green' },
-  { value: '#3b82f6', label: 'Blue' },
-  { value: '#8b5cf6', label: 'Purple' },
-]
+
 
 export function TransactionForm({ transaction, accounts, categories, onSave, onCancel }: TransactionFormProps) {
   const [formData, setFormData] = useState({
@@ -79,8 +70,6 @@ export function TransactionForm({ transaction, accounts, categories, onSave, onC
     fromAccountId: '',
     toAccountId: '', // For transfers
     categoryId: '',
-    cleared: 'UNCLEARED',
-    flagColor: '',
     isTransfer: false,
   })
 
@@ -97,8 +86,6 @@ export function TransactionForm({ transaction, accounts, categories, onSave, onC
         fromAccountId: transaction.fromAccount.id,
         toAccountId: transaction.toAccount?.id || '',
         categoryId: transaction.category?.id || '',
-        cleared: transaction.cleared,
-        flagColor: transaction.flagColor || '',
         isTransfer: !!transaction.toAccount,
       })
     } else if (accounts.length > 0) {
@@ -150,8 +137,6 @@ export function TransactionForm({ transaction, accounts, categories, onSave, onC
       fromAccountId: formData.fromAccountId,
       toAccountId: formData.isTransfer ? formData.toAccountId : null,
       categoryId: formData.isTransfer ? null : (formData.categoryId || null),
-      cleared: formData.cleared,
-      flagColor: formData.flagColor || null,
     }
 
     onSave(transactionData)
@@ -328,29 +313,19 @@ export function TransactionForm({ transaction, accounts, categories, onSave, onC
             </div>
           )}
 
-          {/* Category - Individual categories in dropdown */}
+          {/* Category - Smart Search */}
           {!formData.isTransfer && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Category
               </label>
-              <select
+              <CategorySearchInput
+                categories={categories}
                 value={formData.categoryId}
-                onChange={(e) => handleInputChange('categoryId', e.target.value)}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  errors.categoryId ? 'border-red-500' : ''
-                }`}
-              >
-                <option value="">💸 No Category (Uncategorized)</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name} ({category.categoryGroup?.name || 'Uncategorized'})
-                  </option>
-                ))}
-              </select>
-              {errors.categoryId && (
-                <p className="text-sm text-red-600 mt-1">{errors.categoryId}</p>
-              )}
+                onChange={(categoryId) => handleInputChange('categoryId', categoryId)}
+                placeholder="Search categories or select one..."
+                error={errors.categoryId}
+              />
             </div>
           )}
 
@@ -367,48 +342,7 @@ export function TransactionForm({ transaction, accounts, categories, onSave, onC
             />
           </div>
 
-          {/* Status & Flag */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* Cleared Status */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <select
-                value={formData.cleared}
-                onChange={(e) => handleInputChange('cleared', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="UNCLEARED">Uncleared</option>
-                <option value="CLEARED">Cleared</option>
-                <option value="RECONCILED">Reconciled</option>
-              </select>
-            </div>
 
-            {/* Flag Color */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Flag
-              </label>
-              <select
-                value={formData.flagColor}
-                onChange={(e) => handleInputChange('flagColor', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                {flagColors.map((flag) => (
-                  <option key={flag.value} value={flag.value}>
-                    {flag.label}
-                  </option>
-                ))}
-              </select>
-              {formData.flagColor && (
-                <div 
-                  className="w-4 h-4 rounded-full mt-1" 
-                  style={{ backgroundColor: formData.flagColor }}
-                />
-              )}
-            </div>
-          </div>
 
           {/* Action Buttons */}
           <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">

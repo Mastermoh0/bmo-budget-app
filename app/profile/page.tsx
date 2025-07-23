@@ -57,6 +57,8 @@ export default function ProfilePage() {
   // Account deletion states
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false)
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+  const [deletionWarnings, setDeletionWarnings] = useState<any>(null)
+  const [isCheckingDeletion, setIsCheckingDeletion] = useState(false)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -263,8 +265,30 @@ export default function ProfilePage() {
   }
 
   // Account deletion functions
-  const handleDeleteAccount = () => {
-    setShowDeleteAccountModal(true)
+  const handleDeleteAccount = async () => {
+    setIsCheckingDeletion(true)
+    setError('')
+    
+    try {
+      // First, check for deletion warnings and ownership transfer info
+      const response = await fetch('/api/user/delete', {
+        method: 'GET'
+      })
+
+      if (response.ok) {
+        const warnings = await response.json()
+        setDeletionWarnings(warnings)
+        setShowDeleteAccountModal(true)
+      } else {
+        const data = await response.json()
+        setError(data.error || 'Failed to check account deletion requirements')
+      }
+    } catch (error) {
+      console.error('Error checking deletion requirements:', error)
+      setError('Network error. Please try again.')
+    } finally {
+      setIsCheckingDeletion(false)
+    }
   }
 
   const confirmDeleteAccount = async () => {
@@ -274,6 +298,12 @@ export default function ProfilePage() {
     try {
       const response = await fetch('/api/user/delete', {
         method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          confirmDeletion: true
+        })
       })
 
       const data = await response.json()
@@ -335,17 +365,9 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Profile Settings</h1>
-              <p className="text-gray-600">Manage your account information and preferences</p>
-            </div>
-            <Button
-              onClick={() => router.push('/')}
-              variant="outline"
-            >
-              Back to Dashboard
-            </Button>
+          <div className="py-6">
+            <h1 className="text-2xl font-bold text-gray-900">Profile Settings</h1>
+            <p className="text-gray-600">Manage your account information and preferences</p>
           </div>
         </div>
       </div>
@@ -676,22 +698,22 @@ export default function ProfilePage() {
                 <div>
                   <h4 className="font-medium text-red-900 mb-2">Delete Account</h4>
                   <p className="text-sm text-red-700 mb-4">
-                    Permanently delete your account and all associated data. This action cannot be undone.
+                    Permanently delete your account. Plans with other members will be transferred to them.
                   </p>
                   <ul className="text-xs text-red-600 mb-4 space-y-1">
-                    <li>• All your budget plans will be deleted</li>
-                    <li>• All categories and transactions will be removed</li>
-                    <li>• All targets and goals will be lost</li>
+                    <li>• Shared budget plans will be transferred to other members</li>
+                    <li>• Solo budget plans will be deleted permanently</li>
+                    <li>• Your personal data will be removed</li>
                     <li>• Your account cannot be recovered</li>
                   </ul>
                   <Button
                     onClick={handleDeleteAccount}
                     variant="outline"
                     className="w-full text-red-700 border-red-300 hover:bg-red-100 hover:border-red-400"
-                    disabled={isDeletingAccount}
+                    disabled={isDeletingAccount || isCheckingDeletion}
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
-                    Delete My Account
+                    {isCheckingDeletion ? 'Checking...' : 'Delete My Account'}
                   </Button>
                 </div>
               </div>
@@ -715,10 +737,55 @@ export default function ProfilePage() {
       {/* Delete Account Confirmation Modal */}
       <ConfirmationModal
         isOpen={showDeleteAccountModal}
-        onClose={() => setShowDeleteAccountModal(false)}
+        onClose={() => {
+          setShowDeleteAccountModal(false)
+          setDeletionWarnings(null)
+        }}
         onConfirm={confirmDeleteAccount}
         title="Delete Account Permanently"
-        message="Are you absolutely sure you want to delete your account? This will permanently remove ALL your data including all budget plans, categories, transactions, targets, and personal information. This action is irreversible and your account cannot be recovered."
+        message={
+          <div className="space-y-4">
+            <p className="text-gray-700">
+              Are you absolutely sure you want to delete your account? This action is irreversible.
+            </p>
+            
+            {deletionWarnings?.warnings?.ownershipTransferInfo && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-medium text-blue-900 mb-2">🔄 Ownership Transfer</h4>
+                <p className="text-sm text-blue-800 mb-3">{deletionWarnings.warnings.ownershipTransferInfo}</p>
+                
+                {deletionWarnings.groupDetails?.map((group: any) => (
+                  <div key={group.id} className="bg-white border border-blue-200 rounded p-3 mb-2 last:mb-0">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h5 className="font-medium text-blue-900">"{group.name}"</h5>
+                        <p className="text-xs text-blue-700">
+                          {group.memberCount} members • {group.transactionCount} transactions
+                        </p>
+                      </div>
+                      {group.newOwner && (
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-blue-900">→ {group.newOwner.name}</p>
+                          <p className="text-xs text-blue-600">({group.newOwner.reason})</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <h4 className="font-medium text-red-900 mb-2">⚠️ What will be deleted:</h4>
+              <ul className="text-sm text-red-800 space-y-1">
+                <li>• Your personal account and profile</li>
+                <li>• Solo budget plans (plans with only you)</li>
+                <li>• Your messages will be anonymized</li>
+                <li>• This action cannot be undone</li>
+              </ul>
+            </div>
+          </div>
+        }
         confirmText={isDeletingAccount ? "Deleting..." : "Yes, Delete My Account"}
         cancelText="Cancel"
         type="danger"

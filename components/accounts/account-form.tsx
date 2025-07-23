@@ -23,18 +23,22 @@ interface AccountFormProps {
   onCancel: () => void
 }
 
-const accountTypes = [
-  { value: 'CHECKING', label: 'Checking' },
-  { value: 'SAVINGS', label: 'Savings' },
-  { value: 'CASH', label: 'Cash' },
-  { value: 'CREDIT_CARD', label: 'Credit Card' },
-  { value: 'LINE_OF_CREDIT', label: 'Line of Credit' },
-  { value: 'INVESTMENT', label: 'Investment' },
-  { value: 'MORTGAGE', label: 'Mortgage' },
-  { value: 'LOAN', label: 'Loan' },
-  { value: 'OTHER_ASSET', label: 'Other Asset' },
-  { value: 'OTHER_LIABILITY', label: 'Other Liability' },
-]
+const accountTypeGroups = {
+  assets: [
+    { value: 'CHECKING', label: 'Checking', icon: '🏦' },
+    { value: 'SAVINGS', label: 'Savings', icon: '💰' },
+    { value: 'CASH', label: 'Cash', icon: '💵' },
+    { value: 'INVESTMENT', label: 'Investment', icon: '📈' },
+    { value: 'OTHER_ASSET', label: 'Other Asset', icon: '🏠' },
+  ],
+  liabilities: [
+    { value: 'CREDIT_CARD', label: 'Credit Card', icon: '💳' },
+    { value: 'LINE_OF_CREDIT', label: 'Line of Credit', icon: '🏧' },
+    { value: 'MORTGAGE', label: 'Mortgage', icon: '🏡' },
+    { value: 'LOAN', label: 'Loan', icon: '🤝' },
+    { value: 'OTHER_LIABILITY', label: 'Other Liability', icon: '📋' },
+  ]
+}
 
 export function AccountForm({ account, onSave, onCancel }: AccountFormProps) {
   const [formData, setFormData] = useState({
@@ -113,8 +117,8 @@ export function AccountForm({ account, onSave, onCancel }: AccountFormProps) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black bg-opacity-25 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-white rounded-lg shadow-xl">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+      <Card className="w-full max-w-lg bg-white rounded-lg shadow-xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
           <h2 className="text-lg font-semibold text-gray-900">
             {account ? 'Edit Account' : 'Add New Account'}
           </h2>
@@ -128,7 +132,8 @@ export function AccountForm({ account, onSave, onCancel }: AccountFormProps) {
           </Button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="p-4 space-y-4 overflow-y-auto flex-1">
           {/* Account Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -148,22 +153,58 @@ export function AccountForm({ account, onSave, onCancel }: AccountFormProps) {
 
           {/* Account Type */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Account Type *
             </label>
-            <select
-              value={formData.type}
-              onChange={(e) => handleInputChange('type', e.target.value)}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                errors.type ? 'border-red-500' : ''
-              }`}
-            >
-              {accountTypes.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
-            </select>
+            
+            {/* Assets */}
+            <div className="mb-3">
+              <h4 className="text-xs font-medium text-gray-600 mb-2 uppercase tracking-wide">Assets</h4>
+              <div className="grid grid-cols-2 gap-2">
+                {accountTypeGroups.assets.map((type) => (
+                  <button
+                    key={type.value}
+                    type="button"
+                    onClick={() => handleInputChange('type', type.value)}
+                    className={`p-2 text-xs rounded-md border transition-all text-left ${
+                      formData.type === type.value
+                        ? 'bg-blue-50 border-blue-300 text-blue-700'
+                        : 'bg-white border-gray-200 hover:border-gray-300 text-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm">{type.icon}</span>
+                      <span className="font-medium">{type.label}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Liabilities */}
+            <div>
+              <h4 className="text-xs font-medium text-gray-600 mb-2 uppercase tracking-wide">Liabilities</h4>
+              <div className="grid grid-cols-2 gap-2">
+                {accountTypeGroups.liabilities.map((type) => (
+                  <button
+                    key={type.value}
+                    type="button"
+                    onClick={() => handleInputChange('type', type.value)}
+                    className={`p-2 text-xs rounded-md border transition-all text-left ${
+                      formData.type === type.value
+                        ? 'bg-red-50 border-red-300 text-red-700'
+                        : 'bg-white border-gray-200 hover:border-gray-300 text-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm">{type.icon}</span>
+                      <span className="font-medium">{type.label}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            
             {errors.type && (
               <p className="text-sm text-red-600 mt-1">{errors.type}</p>
             )}
@@ -218,40 +259,99 @@ export function AccountForm({ account, onSave, onCancel }: AccountFormProps) {
             />
           </div>
 
-          {/* Account Options */}
+          {/* Account Purpose & Status */}
           <div className="space-y-3">
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="isOnBudget"
-                checked={formData.isOnBudget}
-                onChange={(e) => handleInputChange('isOnBudget', e.target.checked)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="isOnBudget" className="ml-2 block text-sm text-gray-700">
-                Budget Account
-              </label>
+            <label className="block text-sm font-medium text-gray-700">
+              Account Settings
+            </label>
+            
+            {/* Account Purpose */}
+            <div>
+              <h4 className="text-xs font-medium text-gray-600 mb-2 uppercase tracking-wide">Purpose</h4>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleInputChange('isOnBudget', true)}
+                  className={`p-2 text-xs rounded-md border transition-all ${
+                    formData.isOnBudget
+                      ? 'bg-blue-50 border-blue-300 text-blue-700'
+                      : 'bg-white border-gray-200 hover:border-gray-300 text-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-center space-x-1">
+                    <span>💰</span>
+                    <span className="font-medium">Budget</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Include in budget planning</p>
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => handleInputChange('isOnBudget', false)}
+                  className={`p-2 text-xs rounded-md border transition-all ${
+                    !formData.isOnBudget
+                      ? 'bg-green-50 border-green-300 text-green-700'
+                      : 'bg-white border-gray-200 hover:border-gray-300 text-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-center space-x-1">
+                    <span>📊</span>
+                    <span className="font-medium">Tracking</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Net worth only</p>
+                </button>
+              </div>
             </div>
-            <p className="text-xs text-gray-500 ml-6">
-              Budget accounts are included in your budget planning. Tracking accounts are for net worth only.
-            </p>
-
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="isClosed"
-                checked={formData.isClosed}
-                onChange={(e) => handleInputChange('isClosed', e.target.checked)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="isClosed" className="ml-2 block text-sm text-gray-700">
-                Closed Account
-              </label>
+            
+            {/* Account Status */}
+            <div>
+              <h4 className="text-xs font-medium text-gray-600 mb-2 uppercase tracking-wide">Status</h4>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleInputChange('isClosed', false)}
+                  className={`p-2 text-xs rounded-md border transition-all ${
+                    !formData.isClosed
+                      ? 'bg-green-50 border-green-300 text-green-700'
+                      : 'bg-white border-gray-200 hover:border-gray-300 text-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-center space-x-1">
+                    <span>✅</span>
+                    <span className="font-medium">Active</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Currently in use</p>
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => handleInputChange('isClosed', true)}
+                  className={`p-2 text-xs rounded-md border transition-all ${
+                    formData.isClosed
+                      ? 'bg-gray-50 border-gray-300 text-gray-700'
+                      : 'bg-white border-gray-200 hover:border-gray-300 text-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-center space-x-1">
+                    <span>🔒</span>
+                    <span className="font-medium">Closed</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Archived account</p>
+                </button>
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 border border-gray-200 rounded-md p-2 text-center">
+              <p className="text-xs text-gray-600">
+                <strong>Current:</strong> {formData.isClosed ? 'Closed' : 'Active'} {formData.isOnBudget ? 'Budget' : 'Tracking'} Account
+              </p>
             </div>
           </div>
 
-          {/* Submit Buttons */}
-          <div className="flex space-x-3 pt-4">
+          </div>
+
+          {/* Submit Buttons - Fixed Footer */}
+          <div className="flex space-x-3 p-4 border-t border-gray-200 flex-shrink-0">
             <Button
               type="button"
               variant="ghost"

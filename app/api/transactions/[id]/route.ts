@@ -202,11 +202,40 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get the user's budget group
-    const userMembership = await prisma.groupMember.findFirst({
-      where: { userId: session.user.id },
-      include: { group: true }
-    })
+    const body = await request.json()
+    const { 
+      date,
+      amount,
+      payee,
+      memo,
+      fromAccountId,
+      toAccountId,
+      categoryId,
+      planId // Add planId parameter
+    } = body
+
+    let userMembership;
+
+    if (planId) {
+      // Verify user has access to the specified plan
+      userMembership = await prisma.groupMember.findFirst({
+        where: { 
+          userId: session.user.id,
+          groupId: planId
+        },
+        include: { group: true }
+      })
+      
+      if (!userMembership) {
+        return NextResponse.json({ error: 'Plan not found or access denied' }, { status: 403 })
+      }
+    } else {
+      // Get the user's first budget group (backward compatibility)
+      userMembership = await prisma.groupMember.findFirst({
+        where: { userId: session.user.id },
+        include: { group: true }
+      })
+    }
 
     if (!userMembership) {
       return NextResponse.json({ error: 'No budget group found' }, { status: 404 })
@@ -219,19 +248,6 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         userRole: userMembership.role 
       }, { status: 403 })
     }
-
-    const body = await request.json()
-    const { 
-      date,
-      amount,
-      payee,
-      memo,
-      fromAccountId,
-      toAccountId,
-      categoryId,
-      cleared = 'UNCLEARED',
-      flagColor
-    } = body
 
     // Get the original transaction to reverse its effects
     const originalTransaction = await prisma.transaction.findUnique({
@@ -272,8 +288,6 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         fromAccountId,
         toAccountId: toAccountId || null,
         categoryId: categoryId || null,
-        cleared,
-        flagColor: flagColor || null,
       },
       include: {
         fromAccount: {
@@ -329,11 +343,31 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get the user's budget group
-    const userMembership = await prisma.groupMember.findFirst({
-      where: { userId: session.user.id },
-      include: { group: true }
-    })
+    const { searchParams } = new URL(request.url)
+    const planId = searchParams.get('planId')
+
+    let userMembership;
+
+    if (planId) {
+      // Verify user has access to the specified plan
+      userMembership = await prisma.groupMember.findFirst({
+        where: { 
+          userId: session.user.id,
+          groupId: planId
+        },
+        include: { group: true }
+      })
+      
+      if (!userMembership) {
+        return NextResponse.json({ error: 'Plan not found or access denied' }, { status: 403 })
+      }
+    } else {
+      // Get the user's first budget group (backward compatibility)
+      userMembership = await prisma.groupMember.findFirst({
+        where: { userId: session.user.id },
+        include: { group: true }
+      })
+    }
 
     if (!userMembership) {
       return NextResponse.json({ error: 'No budget group found' }, { status: 404 })

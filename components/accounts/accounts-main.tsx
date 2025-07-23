@@ -7,6 +7,7 @@ import { Plus, Edit3, Trash2, CreditCard, PiggyBank, Banknote, TrendingUp, Home,
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
+import { ErrorModal } from '@/components/ui/error-modal'
 import { formatCurrency } from '@/lib/utils'
 import { useUserRole } from '@/hooks/useUserRole'
 import { AccountForm } from './account-form'
@@ -59,6 +60,16 @@ export function AccountsMain() {
   // Confirmation modal state
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
   const [accountToDelete, setAccountToDelete] = useState<string | null>(null)
+  
+  // Error modal state
+  const [showErrorModal, setShowErrorModal] = useState(false)
+  const [errorModalConfig, setErrorModalConfig] = useState({
+    title: '',
+    message: '',
+    details: '',
+    type: 'error' as 'error' | 'warning' | 'info',
+    actionButton: undefined as { text: string; onClick: () => void; variant?: 'default' | 'outline' } | undefined
+  })
 
   // Get current plan ID from URL or localStorage
   const getCurrentPlanId = () => {
@@ -76,6 +87,18 @@ export function AccountsMain() {
       callbackUrl: '/auth/signin',
       redirect: true
     })
+  }
+
+  // Helper function to show error modal
+  const showError = (title: string, message: string, details?: string, actionButton?: { text: string; onClick: () => void; variant?: 'default' | 'outline' }) => {
+    setErrorModalConfig({
+      title,
+      message, 
+      details: details || '',
+      type: 'error',
+      actionButton
+    })
+    setShowErrorModal(true)
   }
 
   // Fetch accounts from API
@@ -136,7 +159,15 @@ export function AccountsMain() {
     if (!accountToDelete) return
 
     try {
-      const response = await fetch(`/api/accounts/${accountToDelete}`, {
+      // Get current plan ID and pass it to the API
+      const currentPlanId = getCurrentPlanId()
+      const url = currentPlanId 
+        ? `/api/accounts/${accountToDelete}?planId=${currentPlanId}`
+        : `/api/accounts/${accountToDelete}`
+      
+      console.log('🗑️ Deleting account from plan:', currentPlanId)
+      
+      const response = await fetch(url, {
         method: 'DELETE',
       })
 
@@ -154,11 +185,36 @@ export function AccountsMain() {
           return
         }
         
-        alert('Failed to delete account. Please try again.')
+        // Show more specific error message
+        if (errorData.error?.includes('existing transactions')) {
+          showError(
+            'Cannot Delete Account',
+            errorData.error,
+            'You can close the account instead by editing it and checking "Closed Account".',
+            {
+              text: 'Edit Account',
+              onClick: () => {
+                const account = accounts.find(acc => acc.id === accountToDelete)
+                if (account) {
+                  handleEditAccount(account)
+                }
+              },
+              variant: 'outline'
+            }
+          )
+        } else {
+          showError(
+            'Delete Failed',
+            errorData.error || 'Unable to delete the account. Please try again.'
+          )
+        }
       }
     } catch (error) {
       console.error('Failed to delete account:', error)
-      alert('Failed to delete account. Please try again.')
+      showError(
+        'Delete Failed',
+        'Unable to delete the account. Please check your connection and try again.'
+      )
     } finally {
       setAccountToDelete(null)
       setShowDeleteConfirmation(false)
@@ -169,10 +225,18 @@ export function AccountsMain() {
     try {
       if (editingAccount) {
         // Update existing account
+        const currentPlanId = getCurrentPlanId()
+        const accountDataWithPlan = {
+          ...accountData,
+          planId: currentPlanId // Pass the current plan ID
+        }
+        
+        console.log('✏️ Updating account in plan:', currentPlanId)
+        
         const response = await fetch(`/api/accounts/${editingAccount.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(accountData),
+          body: JSON.stringify(accountDataWithPlan),
         })
 
         if (response.ok) {
@@ -192,14 +256,24 @@ export function AccountsMain() {
             return
           }
           
-          alert('Failed to update account. Please try again.')
+          showError(
+            'Update Failed',
+            'Unable to update the account. Please check your information and try again.'
+          )
         }
       } else {
-        // Create new account
+        // Create new account in the current plan
+        const currentPlanId = getCurrentPlanId()
+        console.log('🏦 Creating account in plan:', currentPlanId)
+        const accountDataWithPlan = {
+          ...accountData,
+          planId: currentPlanId // Pass the current plan ID
+        }
+        
         const response = await fetch('/api/accounts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(accountData),
+          body: JSON.stringify(accountDataWithPlan),
         })
 
         if (response.ok) {
@@ -217,14 +291,20 @@ export function AccountsMain() {
             return
           }
           
-          alert('Failed to create account. Please try again.')
+          showError(
+            'Create Failed', 
+            'Unable to create the account. Please check your information and try again.'
+          )
         }
       }
       setShowForm(false)
       setEditingAccount(null)
     } catch (error) {
       console.error('Failed to save account:', error)
-      alert('Failed to save account. Please try again.')
+      showError(
+        'Save Failed',
+        'Unable to save the account. Please check your connection and try again.'
+      )
     }
   }
 
@@ -233,8 +313,25 @@ export function AccountsMain() {
   const trackingAccounts = accounts.filter(account => !account.isOnBudget && !account.isClosed)
   const closedAccounts = accounts.filter(account => account.isClosed)
 
-  const totalBudgetBalance = budgetAccounts.reduce((sum, account) => sum + account.balance, 0)
-  const totalTrackingBalance = trackingAccounts.reduce((sum, account) => sum + account.balance, 0)
+  // Define liability account types
+  const liabilityTypes = ['CREDIT_CARD', 'LINE_OF_CREDIT', 'MORTGAGE', 'LOAN', 'OTHER_LIABILITY']
+
+  // Calculate proper balances considering account types
+  const totalBudgetBalance = budgetAccounts.reduce((sum, account) => {
+    const balance = Number(account.balance) // Convert Prisma Decimal to JavaScript number
+    if (liabilityTypes.includes(account.type)) {
+      return sum - Math.abs(balance) // Subtract debt from net worth
+    }
+    return sum + balance
+  }, 0)
+  
+  const totalTrackingBalance = trackingAccounts.reduce((sum, account) => {
+    const balance = Number(account.balance) // Convert Prisma Decimal to JavaScript number
+    if (liabilityTypes.includes(account.type)) {
+      return sum - Math.abs(balance) // Subtract debt from net worth
+    }
+    return sum + balance
+  }, 0)
 
   if (loading) {
     return (
@@ -273,10 +370,10 @@ export function AccountsMain() {
               <div className="text-center">
                 <p className="text-sm text-green-600 font-medium mb-1">Total Assets</p>
                 <p className="text-2xl font-bold text-green-700">
-                  {formatCurrency(accounts.filter(a => a.balance > 0).reduce((sum, a) => sum + a.balance, 0))}
+                  {formatCurrency(accounts.filter(a => !liabilityTypes.includes(a.type)).reduce((sum, a) => sum + Math.abs(Number(a.balance)), 0))}
                 </p>
                 <p className="text-xs text-green-600 mt-1">
-                  {accounts.filter(a => a.balance > 0).length} accounts
+                  {accounts.filter(a => !liabilityTypes.includes(a.type)).length} accounts
                 </p>
               </div>
             </Card>
@@ -284,10 +381,10 @@ export function AccountsMain() {
               <div className="text-center">
                 <p className="text-sm text-red-600 font-medium mb-1">Total Liabilities</p>
                 <p className="text-2xl font-bold text-red-700">
-                  {formatCurrency(Math.abs(accounts.filter(a => a.balance < 0).reduce((sum, a) => sum + a.balance, 0)))}
+                  {formatCurrency(accounts.filter(a => liabilityTypes.includes(a.type)).reduce((sum, a) => sum + Math.abs(Number(a.balance)), 0))}
                 </p>
                 <p className="text-xs text-red-600 mt-1">
-                  {accounts.filter(a => a.balance < 0).length} accounts
+                  {accounts.filter(a => liabilityTypes.includes(a.type)).length} accounts
                 </p>
               </div>
             </Card>
@@ -295,7 +392,12 @@ export function AccountsMain() {
               <div className="text-center">
                 <p className="text-sm text-blue-600 font-medium mb-1">Net Worth</p>
                 <p className="text-2xl font-bold text-blue-700">
-                  {formatCurrency(accounts.reduce((sum, a) => sum + a.balance, 0))}
+                  {formatCurrency(accounts.reduce((sum, a) => {
+                    if (liabilityTypes.includes(a.type)) {
+                      return sum - Math.abs(a.balance)
+                    }
+                    return sum + a.balance
+                  }, 0))}
                 </p>
                 <p className="text-xs text-blue-600 mt-1">
                   {accounts.length} total accounts
@@ -431,6 +533,17 @@ export function AccountsMain() {
         confirmText="Delete Account"
         cancelText="Keep Account"
         type="danger"
+      />
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title={errorModalConfig.title}
+        message={errorModalConfig.message}
+        details={errorModalConfig.details}
+        type={errorModalConfig.type}
+        actionButton={errorModalConfig.actionButton}
       />
     </div>
   )

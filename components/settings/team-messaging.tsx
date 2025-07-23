@@ -58,7 +58,7 @@ export function TeamMessaging({ groupId, currentUserId }: TeamMessagingProps) {
     if (!socket) return
 
     socket.on('new-message', (message: Message) => {
-      setMessages(prev => [message, ...prev])
+      setMessages(prev => [...prev, message])
       scrollToBottom()
     })
 
@@ -126,7 +126,8 @@ export function TeamMessaging({ groupId, currentUserId }: TeamMessagingProps) {
         if (response.ok) {
           const data = await response.json()
           // Add message to local state immediately for better UX
-          setMessages(prev => [data.message, ...prev])
+          setMessages(prev => [...prev, data.message])
+          scrollToBottom()
         } else {
           throw new Error('Failed to send message')
         }

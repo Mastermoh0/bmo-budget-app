@@ -102,20 +102,8 @@ export async function POST(request: Request) {
         if (defaultGroup) {
           budgetGroupId = defaultGroup.groupId
         } else {
-          // Create a new budget group
-          const newGroup = await tx.budgetGroup.create({
-            data: {
-              name: `${user.name || 'My'} Budget`,
-              description: 'Your personal budget',
-              members: {
-                create: {
-                  userId: session.user.id,
-                  role: 'OWNER'
-                }
-              }
-            }
-          })
-          budgetGroupId = newGroup.id
+          // Don't auto-create budget groups - require explicit plan ID
+          throw new Error('No budget plan found. Please complete onboarding first.')
         }
       }
 

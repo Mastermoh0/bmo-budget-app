@@ -33,7 +33,8 @@ export async function GET() {
                 }
               }
             }
-          }
+          },
+          orderBy: { joinedAt: 'asc' } // Ensure first plan (onboarding) comes first
         }
       }
     })
@@ -42,47 +43,13 @@ export async function GET() {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // If user doesn't have a budget group, create one automatically
+    // Don't auto-create budget groups - let onboarding handle this
     let userWithBudgetGroup = user
     console.log('🔍 Profile API: User memberships count:', user.memberships.length)
     console.log('📋 Profile API: User memberships:', JSON.stringify(user.memberships, null, 2))
     
     if (user.memberships.length === 0) {
-      console.log('⚠️ Profile API: User has no budget group, creating one automatically')
-      
-      const budgetGroup = await prisma.budgetGroup.create({
-        data: {
-          name: `${user.name || 'My'} Budget`,
-          description: 'Your personal budget',
-          members: {
-            create: {
-              userId: user.id,
-              role: 'OWNER'
-            }
-          }
-        },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          currency: true,
-          _count: {
-            select: { members: true }
-          }
-        }
-      })
-
-      // Update the user object to include the new membership
-      userWithBudgetGroup = {
-        ...user,
-        memberships: [{
-          groupId: budgetGroup.id,
-          role: 'OWNER' as const,
-          group: budgetGroup
-        }]
-      }
-      
-      console.log('✅ Profile API: Created budget group:', budgetGroup.id)
+      console.log('⚠️ Profile API: User has no budget group yet - waiting for onboarding completion')
     } else {
       console.log('✅ Profile API: User has existing budget groups')
     }

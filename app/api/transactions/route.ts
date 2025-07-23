@@ -186,7 +186,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { 
+        const {
       date,
       amount,
       payee,
@@ -194,8 +194,6 @@ export async function POST(request: Request) {
       fromAccountId,
       toAccountId,
       categoryId,
-      cleared = 'UNCLEARED',
-      flagColor,
       planId // Add planId parameter
     } = body
 

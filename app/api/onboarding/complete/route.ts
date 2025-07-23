@@ -5,25 +5,26 @@ import { prisma } from '@/lib/db'
 
 interface OnboardingData {
   name: string
-  budgetingExperience: string
-  primaryGoals: string[]
-  lifeStage: string
-  housingType: string
-  incomeFrequency: string
-  monthlyIncome: string
-  hasDebt: string
-  debtTypes: string[]
-  savingsGoals: string[]
-  expenseCategories: string[]
-  shoppingHabits: string[]
-  healthWellness: string[]
-  transportation: string[]
-  subscriptions: string[]
-  hobbiesInterests: string[]
-  familyPets: string[]
-  workEducation: string[]
-  irregularExpenses: string[]
-  budgetingChallenges: string[]
+  budgetingExperience?: string
+  primaryGoals?: string[]
+  lifeStage?: string
+  housingType?: string
+  incomeFrequency?: string
+  monthlyIncome?: string
+  hasDebt?: string
+  debtTypes?: string[]
+  savingsGoals?: string[]
+  expenseCategories?: string[]
+  shoppingHabits?: string[]
+  healthWellness?: string[]
+  transportation?: string[]
+  subscriptions?: string[]
+  hobbiesInterests?: string[]
+  familyPets?: string[]
+  workEducation?: string[]
+  irregularExpenses?: string[]
+  budgetingChallenges?: string[]
+  skipped?: boolean
 }
 
 export async function POST(request: NextRequest) {
@@ -51,7 +52,9 @@ export async function POST(request: NextRequest) {
     const budgetGroup = await prisma.budgetGroup.create({
       data: {
         name: `${answers.name}'s Budget`,
-        description: 'Your personalized budget based on your lifestyle',
+        description: answers.skipped 
+          ? 'Your custom budget - start fresh!'
+          : 'Your personalized budget based on your lifestyle',
         members: {
           create: {
             userId: session.user.id,
@@ -61,10 +64,15 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Create personalized categories and groups based on comprehensive answers
-    console.log('🏗️ Creating personalized categories for group:', budgetGroup.id)
-    await createPersonalizedCategories(budgetGroup.id, answers)
-    console.log('✅ Categories created successfully!')
+    // Only create categories if onboarding wasn't skipped
+    if (answers.skipped) {
+      console.log('⏭️ Onboarding was skipped - creating blank budget')
+    } else {
+      // Create personalized categories and groups based on comprehensive answers
+      console.log('🏗️ Creating personalized categories for group:', budgetGroup.id)
+      await createPersonalizedCategories(budgetGroup.id, answers)
+      console.log('✅ Categories created successfully!')
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

@@ -8,7 +8,7 @@ import {
   Home, 
   CreditCard, 
   TrendingUp, 
-  Settings, 
+  Users, 
   PlusCircle,
   ChevronDown,
   ChevronRight,
@@ -76,7 +76,7 @@ export function BudgetSidebar() {
     { id: 'transactions', name: 'Transactions', icon: Receipt, href: '/transactions' },
     { id: 'reports', name: 'Reports', icon: TrendingUp, href: '/reports' },
     { id: 'profile', name: 'Profile', icon: User, href: '/profile' },
-    { id: 'settings', name: 'Settings', icon: Settings, href: '/settings' },
+    { id: 'teams', name: 'Teams', icon: Users, href: '/teams' },
   ]
 
   const handleLogout = async () => {
@@ -86,15 +86,33 @@ export function BudgetSidebar() {
     })
   }
 
-  const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0)
+  // Define liability account types that should be subtracted from net worth
+  const liabilityTypes = ['CREDIT_CARD', 'LINE_OF_CREDIT', 'MORTGAGE', 'LOAN', 'OTHER_LIABILITY']
+  
+  const totalBalance = accounts.reduce((sum, account) => {
+    const balance = Number(account.balance) // Convert Prisma Decimal to JavaScript number
+    if (liabilityTypes.includes(account.type)) {
+      return sum - Math.abs(balance) // Subtract debt from net worth
+    }
+    return sum + balance
+  }, 0)
 
   return (
     <div className="fixed left-0 top-0 w-64 h-screen bg-white border-r border-ynab-gray-200 flex flex-col z-20">
       {/* Logo */}
       <div className="p-4 border-b border-ynab-gray-200">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-ynab-blue rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-lg">B</span>
+          <img 
+            src="/logo.png" 
+            alt="BMO Logo" 
+            className="w-8 h-8 rounded-lg"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+              e.currentTarget.nextElementSibling.style.display = 'flex';
+            }}
+          />
+          <div className="w-8 h-8 bg-ynab-blue rounded-lg flex items-center justify-center" style={{ display: 'none' }}>
+            <span className="text-white font-bold text-lg">😊</span>
           </div>
           <div>
             <h2 className="text-xl font-bold text-ynab-blue">BMO</h2>
@@ -156,19 +174,25 @@ export function BudgetSidebar() {
               <div className="text-sm text-ynab-gray-500 p-2">Loading accounts...</div>
             ) : (
               <>
-                {accounts.map((account) => (
-                  <div
-                    key={account.id}
-                    className="flex items-center justify-between p-2 hover:bg-ynab-gray-50 rounded-lg cursor-pointer transition-colors"
-                  >
-                    <span className="text-sm text-ynab-gray-700">{account.name}</span>
-                    <span className={`text-sm font-medium ${
-                      account.balance >= 0 ? 'text-ynab-green' : 'text-ynab-red'
-                    }`}>
-                      {formatCurrency(account.balance)}
-                    </span>
-                  </div>
-                ))}
+                {accounts.map((account) => {
+                  const isLiability = liabilityTypes.includes(account.type)
+                  const balance = Number(account.balance) // Convert Prisma Decimal to JavaScript number
+                  const displayBalance = isLiability ? -Math.abs(balance) : balance
+                  
+                  return (
+                    <div
+                      key={account.id}
+                      className="flex items-center justify-between p-2 hover:bg-ynab-gray-50 rounded-lg cursor-pointer transition-colors"
+                    >
+                      <span className="text-sm text-ynab-gray-700">{account.name}</span>
+                      <span className={`text-sm font-medium ${
+                        displayBalance >= 0 ? 'text-ynab-green' : 'text-ynab-red'
+                      }`}>
+                        {formatCurrency(displayBalance)}
+                      </span>
+                    </div>
+                  )
+                })}
                 
                 <div className="border-t border-ynab-gray-200 pt-2 mt-2">
                   <div className="flex items-center justify-between p-2">

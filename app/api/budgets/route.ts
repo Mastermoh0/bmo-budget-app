@@ -104,11 +104,20 @@ export async function GET(request: Request) {
       },
       select: {
         balance: true,
+        type: true,
       },
     })
 
+    // Define liability account types that should be subtracted from net worth
+    const liabilityTypes = ['CREDIT_CARD', 'LINE_OF_CREDIT', 'MORTGAGE', 'LOAN', 'OTHER_LIABILITY']
+
     const totalIncome = accounts.reduce((sum, account) => {
-      return sum + Number(account.balance)
+      const balance = Number(account.balance)
+      // Subtract liability account balances from total income
+      if (liabilityTypes.includes(account.type)) {
+        return sum - Math.abs(balance) // Ensure we subtract the absolute value
+      }
+      return sum + balance
     }, 0)
 
     console.log('💰 Budgets API: Account calculation:', {

@@ -17,9 +17,7 @@ interface Transaction {
   amount: number
   memo?: string
   payee?: string
-  cleared: string
   approved: boolean
-  flagColor?: string
   fromAccount: {
     id: string
     name: string
@@ -54,17 +52,7 @@ interface Category {
   }
 }
 
-const clearingStatusLabels = {
-  UNCLEARED: 'Uncleared',
-  CLEARED: 'Cleared',
-  RECONCILED: 'Reconciled',
-}
 
-const clearingStatusColors = {
-  UNCLEARED: 'bg-yellow-100 text-yellow-800',
-  CLEARED: 'bg-green-100 text-green-800',
-  RECONCILED: 'bg-blue-100 text-blue-800',
-}
 
 export function TransactionsMain() {
   const router = useRouter()
@@ -115,7 +103,10 @@ export function TransactionsMain() {
   const fetchTransactions = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/transactions')
+      const currentPlanId = getCurrentPlanId()
+      const url = currentPlanId ? `/api/transactions?planId=${currentPlanId}` : '/api/transactions'
+      
+      const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
         setTransactions(data)
@@ -175,7 +166,10 @@ export function TransactionsMain() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('/api/categories')
+      const currentPlanId = getCurrentPlanId()
+      const url = currentPlanId ? `/api/categories?planId=${currentPlanId}` : '/api/categories'
+      
+      const response = await fetch(url)
       if (response.ok) {
         const categoryGroups = await response.json()
         // Flatten category groups into individual categories
@@ -229,14 +223,21 @@ export function TransactionsMain() {
     if (!transactionToDelete) return
 
     try {
-      const response = await fetch(`/api/transactions/${transactionToDelete}`, {
+      const currentPlanId = getCurrentPlanId()
+      const url = currentPlanId 
+        ? `/api/transactions/${transactionToDelete}?planId=${currentPlanId}`
+        : `/api/transactions/${transactionToDelete}`
+      
+      const response = await fetch(url, {
         method: 'DELETE',
       })
 
       if (response.ok) {
         setTransactions(transactions.filter(t => t.id !== transactionToDelete))
       } else {
-        alert('Failed to delete transaction. Please try again.')
+        const errorData = await response.json()
+        console.error('Failed to delete transaction:', errorData)
+        alert(`Failed to delete transaction: ${errorData.error || 'Please try again.'}`)
       }
     } catch (error) {
       console.error('Failed to delete transaction:', error)
@@ -249,12 +250,18 @@ export function TransactionsMain() {
 
   const handleSaveTransaction = async (transactionData: any) => {
     try {
+      const currentPlanId = getCurrentPlanId()
+      const dataWithPlanId = {
+        ...transactionData,
+        planId: currentPlanId
+      }
+
       if (editingTransaction) {
         // Update existing transaction
         const response = await fetch(`/api/transactions/${editingTransaction.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(transactionData),
+          body: JSON.stringify(dataWithPlanId),
         })
 
         if (response.ok) {
@@ -263,7 +270,9 @@ export function TransactionsMain() {
             t.id === editingTransaction.id ? updatedTransaction : t
           ))
         } else {
-          alert('Failed to update transaction. Please try again.')
+          const errorData = await response.json()
+          console.error('Failed to update transaction:', errorData)
+          alert(`Failed to update transaction: ${errorData.error || 'Please try again.'}`)
           return
         }
       } else {
@@ -271,14 +280,16 @@ export function TransactionsMain() {
         const response = await fetch('/api/transactions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(transactionData),
+          body: JSON.stringify(dataWithPlanId),
         })
 
         if (response.ok) {
           const newTransaction = await response.json()
           setTransactions([newTransaction, ...transactions])
         } else {
-          alert('Failed to create transaction. Please try again.')
+          const errorData = await response.json()
+          console.error('Failed to create transaction:', errorData)
+          alert(`Failed to create transaction: ${errorData.error || 'Please try again.'}`)
           return
         }
       }
@@ -434,12 +445,6 @@ export function TransactionsMain() {
                 
                 <div className="text-sm">
                   <div className="text-gray-900">{transaction.payee || 'No payee'}</div>
-                  {transaction.flagColor && (
-                    <div 
-                      className="w-3 h-3 rounded-full mt-1" 
-                      style={{ backgroundColor: transaction.flagColor }}
-                    />
-                  )}
                 </div>
                 
                 <div className="text-sm text-gray-600">

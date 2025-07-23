@@ -30,21 +30,46 @@ export default function Home() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  // Handle plan changes from URL parameters
+  // Handle plan changes from URL parameters and auto-select first plan
   useEffect(() => {
     const planFromUrl = searchParams.get('plan')
     if (planFromUrl && planFromUrl !== selectedPlanId) {
       setSelectedPlanId(planFromUrl)
       localStorage.setItem('lastSelectedPlan', planFromUrl)
     } else if (!planFromUrl && !hasAutoSelected) {
-      // Auto-select last plan from localStorage if no plan in URL
-      const lastPlan = localStorage.getItem('lastSelectedPlan')
-      if (lastPlan) {
-        setSelectedPlanId(lastPlan)
-        setHasAutoSelected(true)
+      // Auto-select plan: prefer localStorage, fallback to first plan from API
+      const fetchAndSelectPlan = async () => {
+        const lastPlan = localStorage.getItem('lastSelectedPlan')
+        if (lastPlan) {
+          setSelectedPlanId(lastPlan)
+          setHasAutoSelected(true)
+        } else {
+          // Fetch user profile to get first plan (onboarding plan)
+          try {
+            const response = await fetch('/api/user/profile')
+            if (response.ok) {
+              const data = await response.json()
+              const firstPlan = data.budgets?.[0] // First plan is onboarding plan (ordered by joinedAt asc)
+              if (firstPlan) {
+                setSelectedPlanId(firstPlan.id)
+                localStorage.setItem('lastSelectedPlan', firstPlan.id)
+                setHasAutoSelected(true)
+                
+                // Update URL to reflect selected plan
+                const params = new URLSearchParams(searchParams.toString())
+                params.set('plan', firstPlan.id)
+                router.replace(`/?${params.toString()}`)
+              }
+            }
+          } catch (error) {
+            console.error('Failed to fetch user profile for plan selection:', error)
+          }
+        }
       }
+      
+      fetchAndSelectPlan()
     }
-  }, [searchParams, selectedPlanId, hasAutoSelected])
+  }, [searchParams, selectedPlanId, hasAutoSelected, router])
 
   // Handle plan selection
   const handlePlanChange = (planId: string) => {

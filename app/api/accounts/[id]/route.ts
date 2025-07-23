@@ -35,7 +35,13 @@ export async function GET(
       return NextResponse.json({ error: 'Account not found' }, { status: 404 })
     }
 
-    return NextResponse.json(account)
+    // Convert Decimal balance to number to prevent string concatenation issues
+    const accountWithNumberBalance = {
+      ...account,
+      balance: Number(account.balance)
+    }
+
+    return NextResponse.json(accountWithNumberBalance)
   } catch (error) {
     console.error('Failed to fetch account:', error)
     return NextResponse.json({ error: 'Failed to fetch account' }, { status: 500 })
@@ -53,25 +59,48 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get the user's budget group
-    const userMembership = await prisma.groupMember.findFirst({
-      where: { userId: session.user.id },
-      include: { group: true }
-    })
+    const body = await request.json()
+    const { planId } = body // Get planId from request body
+    
+    let userMembership;
 
-    if (!userMembership) {
-      return NextResponse.json({ error: 'No budget group found' }, { status: 404 })
+    if (planId) {
+      // Check user's role for the specific plan
+      userMembership = await prisma.groupMember.findFirst({
+        where: { 
+          userId: session.user.id,
+          groupId: planId 
+        },
+        include: { group: true }
+      })
+      
+      if (!userMembership) {
+        return NextResponse.json({ 
+          error: 'Plan not found or access denied',
+          details: 'You are not a member of this budget plan.' 
+        }, { status: 404 })
+      }
+    } else {
+      // Fallback: use first plan (for backward compatibility)
+      userMembership = await prisma.groupMember.findFirst({
+        where: { userId: session.user.id },
+        include: { group: true }
+      })
+
+      if (!userMembership) {
+        return NextResponse.json({ error: 'No budget group found' }, { status: 404 })
+      }
     }
 
     // Check if user has permission to modify accounts (VIEWER role cannot modify)
     if (userMembership.role === 'VIEWER') {
       return NextResponse.json({ 
-        error: 'Access denied. Viewers cannot modify accounts.',
-        userRole: userMembership.role 
+        error: `Access denied. Viewers cannot modify accounts. Your role in this plan: ${userMembership.role}`,
+        userRole: userMembership.role,
+        planId: userMembership.groupId 
       }, { status: 403 })
     }
 
-    const body = await request.json()
     const { 
       name, 
       type, 
@@ -106,7 +135,13 @@ export async function PUT(
       },
     })
 
-    return NextResponse.json(account)
+    // Convert Decimal balance to number to prevent string concatenation issues
+    const accountWithNumberBalance = {
+      ...account,
+      balance: Number(account.balance)
+    }
+
+    return NextResponse.json(accountWithNumberBalance)
   } catch (error) {
     console.error('Failed to update account:', error)
     
@@ -130,14 +165,47 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get the user's budget group
-    const userMembership = await prisma.groupMember.findFirst({
-      where: { userId: session.user.id },
-      include: { group: true }
-    })
+    // Get the planId from query parameters (sent by frontend)
+    const { searchParams } = new URL(request.url)
+    const planId = searchParams.get('planId')
 
-    if (!userMembership) {
-      return NextResponse.json({ error: 'No budget group found' }, { status: 404 })
+    let userMembership;
+
+    if (planId) {
+      // Check user's role for the specific plan
+      userMembership = await prisma.groupMember.findFirst({
+        where: { 
+          userId: session.user.id,
+          groupId: planId 
+        },
+        include: { group: true }
+      })
+      
+      if (!userMembership) {
+        return NextResponse.json({ 
+          error: 'Plan not found or access denied',
+          details: 'You are not a member of this budget plan.' 
+        }, { status: 404 })
+      }
+    } else {
+      // Fallback: use first plan (for backward compatibility)
+      userMembership = await prisma.groupMember.findFirst({
+        where: { userId: session.user.id },
+        include: { group: true }
+      })
+
+      if (!userMembership) {
+        return NextResponse.json({ error: 'No budget group found' }, { status: 404 })
+      }
+    }
+
+    // Check if user has permission to delete accounts (VIEWER role cannot modify)
+    if (userMembership.role === 'VIEWER') {
+      return NextResponse.json({ 
+        error: `Access denied. Viewers cannot delete accounts. Your role in this plan: ${userMembership.role}`,
+        userRole: userMembership.role,
+        planId: userMembership.groupId 
+      }, { status: 403 })
     }
 
     // Check if account has transactions

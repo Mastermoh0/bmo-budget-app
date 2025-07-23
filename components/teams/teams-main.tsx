@@ -1,64 +1,63 @@
 'use client'
 
 import { useState } from 'react'
-import { Settings, Users, MessageCircle } from 'lucide-react'
+import { UserPlus, Users, MessageCircle } from 'lucide-react'
 import { Card } from '@/components/ui/card'
-import { UserManagement } from './user-management'
-import { GeneralSettings } from './general-settings'
-import { TeamMessaging } from './team-messaging'
+import { TeamInvites } from './team-invites'
+import { TeamMembers } from './team-members'
+import { TeamMessaging } from '@/components/settings/team-messaging'
 
-interface BudgetSettingsProps {
+interface TeamsMainProps {
   groupId: string
   groupName: string
   currentUserRole: 'OWNER' | 'EDITOR' | 'VIEWER'
   currentUserId: string
 }
 
-type TabKey = 'general' | 'team' | 'notifications'
+type TabKey = 'invites' | 'members' | 'chat'
 
-export function BudgetSettings({ groupId, groupName, currentUserRole, currentUserId }: BudgetSettingsProps) {
-  const [activeTab, setActiveTab] = useState<TabKey>('general')
+export function TeamsMain({ groupId, groupName, currentUserRole, currentUserId }: TeamsMainProps) {
+  const [activeTab, setActiveTab] = useState<TabKey>('invites')
 
   const tabs = [
     {
-      key: 'general' as TabKey,
-      label: 'General',
-      icon: Settings,
-      description: 'Budget name and basic settings'
+      key: 'invites' as TabKey,
+      label: 'Send Invites',
+      icon: UserPlus,
+      description: 'Invite new team members to your budget'
     },
     {
-      key: 'team' as TabKey,
-      label: 'Team',
+      key: 'members' as TabKey,
+      label: 'Team Members',
       icon: Users,
-      description: 'Manage team members and permissions'
+      description: 'View and manage team members'
     },
     {
-      key: 'notifications' as TabKey,
-      label: 'Messages',
+      key: 'chat' as TabKey,
+      label: 'Team Chat',
       icon: MessageCircle,
-      description: 'Team chat and messaging'
+      description: 'Team messaging and collaboration'
     }
   ]
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'general':
+      case 'invites':
         return (
-          <GeneralSettings
+          <TeamInvites
             groupId={groupId}
-            groupName={groupName}
             currentUserRole={currentUserRole}
           />
         )
-      case 'team':
+      case 'members':
         return (
-          <UserManagement
+          <TeamMembers
             groupId={groupId}
             currentUserRole={currentUserRole}
             currentUserId={currentUserId}
           />
         )
-      case 'notifications':
+      case 'chat':
         return (
           <TeamMessaging
             groupId={groupId}
@@ -73,7 +72,7 @@ export function BudgetSettings({ groupId, groupName, currentUserRole, currentUse
       {/* Sidebar Navigation */}
       <div className="lg:col-span-1">
         <Card className="p-4">
-          <h3 className="font-medium text-gray-900 mb-4">Settings</h3>
+          <h3 className="font-medium text-gray-900 mb-4">Team Features</h3>
           <nav className="space-y-2">
             {tabs.map((tab) => {
               const Icon = tab.icon

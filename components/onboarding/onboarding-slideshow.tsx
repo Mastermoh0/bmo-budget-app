@@ -361,6 +361,7 @@ export default function OnboardingSlideshow() {
     budgetingChallenges: []
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [isSkipping, setIsSkipping] = useState(false)
 
   // Filter slides based on conditions
   const getVisibleSlides = () => {
@@ -438,6 +439,48 @@ export default function OnboardingSlideshow() {
     }
   }
 
+  const handleSkip = async () => {
+    const confirmed = confirm(
+      "Skip onboarding?\n\n" +
+      "You'll start with a completely blank budget with no categories or groups. " +
+      "You can always set up your categories manually later.\n\n" +
+      "Are you sure you want to skip?"
+    )
+    
+    if (!confirmed) return
+    
+    setIsSkipping(true)
+    setIsLoading(true)
+    
+    try {
+      console.log('⏭️ Skipping onboarding - creating blank budget')
+      const response = await fetch('/api/onboarding/complete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: session?.user?.name || 'User',
+          skipped: true
+        })
+      })
+
+      if (response.ok) {
+        console.log('✅ Onboarding skipped successfully!')
+        router.push('/')
+      } else {
+        const errorData = await response.json()
+        console.error('❌ Server error:', errorData)
+        throw new Error(`Failed to skip onboarding: ${errorData.details || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('❌ Error skipping onboarding:', error)
+      alert(`Onboarding skip failed: ${error.message}`)
+      setIsLoading(false)
+      setIsSkipping(false)
+    }
+  }
+
   const canContinue = () => {
     const slide = visibleSlides[currentSlide]
     if (slide.type === 'input') {
@@ -458,15 +501,31 @@ export default function OnboardingSlideshow() {
           <div className="mb-6">
             <LoaderIcon className="w-12 h-12 mx-auto text-blue-600 animate-spin" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            Creating your personalized budget...
-          </h2>
-          <p className="text-gray-600 mb-4">
-            We're analyzing your responses and setting up custom categories and groups tailored to your lifestyle.
-          </p>
-          <div className="text-sm text-gray-500">
-            This may take a few moments...
-          </div>
+          {isSkipping ? (
+            <>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                Setting up your blank budget...
+              </h2>
+              <p className="text-gray-600 mb-4">
+                Creating a fresh start with no categories or groups. You'll have complete control to set up everything exactly how you want it.
+              </p>
+              <div className="text-sm text-gray-500">
+                Almost ready...
+              </div>
+            </>
+          ) : (
+            <>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                Creating your personalized budget...
+              </h2>
+              <p className="text-gray-600 mb-4">
+                We're analyzing your responses and setting up custom categories and groups tailored to your lifestyle.
+              </p>
+              <div className="text-sm text-gray-500">
+                This may take a few moments...
+              </div>
+            </>
+          )}
         </Card>
       </div>
     )
@@ -584,6 +643,17 @@ export default function OnboardingSlideshow() {
                     })}
                   </div>
                 )}
+
+                {/* Skip Button */}
+                <div className="flex justify-center mb-4">
+                  <Button
+                    variant="ghost"
+                    onClick={handleSkip}
+                    className="text-gray-600 hover:text-gray-800 hover:bg-gray-100 text-sm px-6 py-2 border border-gray-300 rounded-full transition-all"
+                  >
+                    ⏭️ Skip Setup - Start with Blank Budget
+                  </Button>
+                </div>
 
                 {/* Navigation */}
                 <div className="flex justify-between items-center pt-6">

@@ -56,7 +56,13 @@ export async function GET(request: Request) {
       ],
     })
 
-    return NextResponse.json(accounts)
+    // Convert Decimal balances to numbers to prevent string concatenation issues
+    const accountsWithNumberBalances = accounts.map(account => ({
+      ...account,
+      balance: Number(account.balance)
+    }))
+
+    return NextResponse.json(accountsWithNumberBalances)
   } catch (error) {
     console.error('Failed to fetch accounts:', error)
     return NextResponse.json({ error: 'Failed to fetch accounts' }, { status: 500 })
@@ -94,35 +100,50 @@ export async function POST(request: Request) {
       isOnBudget = true,
       isClosed = false,
       institution,
-      accountNumber
+      accountNumber,
+      planId // Get the planId from request body
     } = body
 
-    // Always add accounts to user's first plan (shared across all plans)
-    const userMembership = await prisma.groupMember.findFirst({
-      where: { userId: session.user.id },
-      include: { group: true },
-      orderBy: { joinedAt: 'asc' } // Get the first plan (from onboarding)
-    })
+    let budgetGroupId;
+    let userMembership;
 
-    let budgetGroupId = userMembership?.groupId
-
-    // If user doesn't have a budget group, create one
-    if (!userMembership) {
-      const userProfile = user
-
-      const budgetGroup = await prisma.budgetGroup.create({
-        data: {
-          name: `${userProfile?.name || 'My'} Budget`,
-          description: 'Your personal budget',
-          members: {
-            create: {
-              userId: session.user.id,
-              role: 'OWNER'
-            }
-          }
-        }
+    if (planId) {
+      // If planId is provided, create account in that specific plan
+      userMembership = await prisma.groupMember.findFirst({
+        where: { 
+          userId: session.user.id,
+          groupId: planId 
+        },
+        include: { group: true }
       })
-      budgetGroupId = budgetGroup.id
+      
+      if (!userMembership) {
+        return NextResponse.json({ 
+          error: 'Plan not found or access denied',
+          details: 'You are not a member of this budget plan.' 
+        }, { status: 404 })
+      }
+      
+      budgetGroupId = userMembership.groupId
+      console.log(`💾 Creating account in specific plan: ${planId}`)
+    } else {
+      // Fallback: add accounts to user's first plan (shared across all plans)
+      userMembership = await prisma.groupMember.findFirst({
+        where: { userId: session.user.id },
+        include: { group: true },
+        orderBy: { joinedAt: 'asc' } // Get the first plan (from onboarding)
+      })
+
+      budgetGroupId = userMembership?.groupId
+      console.log(`💾 Creating account in default (first) plan: ${budgetGroupId}`)
+    }
+
+    // If user doesn't have a budget group, they need to complete onboarding first
+    if (!userMembership) {
+      return NextResponse.json({ 
+        error: 'No budget plan found',
+        details: 'Please complete onboarding to create your first budget plan.'
+      }, { status: 404 })
     } else {
       // Check if user has permission to create accounts (VIEWER role cannot modify)
       if (userMembership.role === 'VIEWER') {
@@ -154,7 +175,13 @@ export async function POST(request: Request) {
       },
     })
 
-    return NextResponse.json(account, { status: 201 })
+    // Convert Decimal balance to number to prevent string concatenation issues
+    const accountWithNumberBalance = {
+      ...account,
+      balance: Number(account.balance)
+    }
+
+    return NextResponse.json(accountWithNumberBalance, { status: 201 })
   } catch (error) {
     console.error('Failed to create account:', error)
     return NextResponse.json({ error: 'Failed to create account' }, { status: 500 })

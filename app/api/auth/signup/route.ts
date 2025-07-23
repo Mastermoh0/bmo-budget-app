@@ -62,20 +62,7 @@ export async function POST(request: Request) {
       }
     })
 
-    // Create a default budget group for the user
-    const defaultGroup = await prisma.budgetGroup.create({
-      data: {
-        name: `${name}'s Budget`,
-        description: 'Your personal budget',
-        currency: 'NGN',
-        members: {
-          create: {
-            userId: user.id,
-            role: 'OWNER',
-          }
-        }
-      }
-    })
+    // Note: Budget group will be created during onboarding completion
 
     return NextResponse.json({
       message: 'Account created successfully',

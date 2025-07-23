@@ -179,14 +179,22 @@ export default function AcceptInvitePage() {
         {/* Header */}
         <div className="p-6 border-b border-gray-200">
           <div className="text-center">
-            <div className="flex items-center justify-center space-x-2 mb-4">
-              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">B</span>
+            <div className="flex flex-col items-center justify-center mb-6">
+              <div className="mb-4">
+                <img 
+                  src="/logo.png" 
+                  alt="BMO Logo" 
+                  className="w-16 h-16 rounded-2xl shadow-lg mx-auto"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextElementSibling.style.display = 'flex';
+                  }}
+                />
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg flex items-center justify-center mx-auto" style={{ display: 'none' }}>
+                  <span className="text-white font-bold text-3xl">😊</span>
+                </div>
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">BMO</h1>
-                <p className="text-sm text-gray-500">Budget Money Online</p>
-              </div>
+              <h1 className="text-3xl font-bold text-gray-900 tracking-tight">BMO</h1>
             </div>
           </div>
         </div>
