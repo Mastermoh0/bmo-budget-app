@@ -128,7 +128,7 @@ const CustomLegend = ({ payload, chartType }: any) => {
             className="w-3 h-3 rounded"
             style={{ backgroundColor: entry.color }}
           />
-          <span className="text-sm text-gray-700">{entry.value === 'budgeted' ? 'Budgeted' : 'Actual Spending'}</span>
+          <span className="text-sm text-gray-700">{entry.value === 'Budgeted' ? 'Budgeted Amount' : 'Actual Spending'}</span>
         </div>
       ))}
     </div>

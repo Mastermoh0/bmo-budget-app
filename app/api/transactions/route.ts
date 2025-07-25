@@ -260,8 +260,6 @@ export async function POST(request: Request) {
         fromAccountId,
         toAccountId: toAccountId || null,
         categoryId: categoryId || null,
-        cleared,
-        flagColor: flagColor || null,
         groupId: userMembership.groupId,
       },
       include: {
