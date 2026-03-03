@@ -3,9 +3,8 @@ const nextConfig = {
   images: {
     domains: ['localhost'],
   },
-  experimental: {
-    serverComponentsExternalPackages: ['socket.io']
-  },
+  // socket.io must be treated as a server-only external package
+  serverExternalPackages: ['socket.io'],
   // Production optimizations
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
