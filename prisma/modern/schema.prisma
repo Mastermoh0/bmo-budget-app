@@ -1,0 +1,152 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String         @id
+  name          String
+  email         String
+  emailVerified Boolean        @default(false)
+  image         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  ownedBudgets  Budget[]       @relation("BudgetOwner")
+  memberships   BudgetMember[]
+  settings      UserSettings?
+  mailEvents    EmailOutbox[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model RateLimit {
+  id          String @id
+  key         String
+  count       Int
+  lastRequest BigInt
+
+  @@unique([key])
+  @@index([lastRequest])
+  @@map("rateLimit")
+}
+
+enum MemberRole {
+  EDITOR
+  VIEWER
+}
+
+enum MailStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+}
+
+model Budget {
+  id                  String         @id @default(cuid())
+  name                String         @db.VarChar(80)
+  currency            String         @default("NGN") @db.Char(3)
+  timezone            String         @default("Africa/Lagos") @db.VarChar(64)
+  ownerUserId         String
+  owner               User           @relation("BudgetOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  requestId           String         @db.Uuid
+  creationFingerprint String
+  members             BudgetMember[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  archivedAt          DateTime?
+
+  @@unique([ownerUserId, requestId])
+  @@index([ownerUserId])
+}
+
+model BudgetMember {
+  id       String     @id @default(cuid())
+  budgetId String
+  userId   String
+  role     MemberRole
+  budget   Budget     @relation(fields: [budgetId], references: [id], onDelete: Restrict)
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt DateTime   @default(now())
+
+  @@unique([budgetId, userId])
+  @@index([userId])
+}
+
+model UserSettings {
+  userId           String    @id
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastBudgetId     String?
+  setupCompletedAt DateTime?
+  updatedAt        DateTime  @updatedAt
+}
+
+model EmailOutbox {
+  id            String     @id @default(cuid())
+  eventKey      String     @unique
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status        MailStatus @default(PENDING)
+  attempts      Int        @default(0)
+  nextAttemptAt DateTime   @default(now())
+  sentAt        DateTime?
+  createdAt     DateTime   @default(now())
+
+  @@index([status, nextAttemptAt])
+}

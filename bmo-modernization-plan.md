@@ -1,6 +1,6 @@
 # BMO: product and modernization plan
 
-Prepared 25 October 2026; updated 27 October 2026. The framework-upgrade increment is recorded in section 30. Section 31 contains the fresh-database and Better Auth implementation plan requested on 27 October, awaiting the user's approval. That implementation has not started. This document does not itself authorize deleting/resetting the old database, provisioning services, sending real emails or deploying publicly.
+Prepared 25 October 2026; updated 27 October 2026. The framework-upgrade increment is recorded in section 30. Section 31's approved database/Better Auth local foundation is implemented and checked in the separate `codex/database-auth-foundation` checkout; section 32 records the results and continuation path. The user explicitly postponed Neon/Google setup. Public deployment, real email delivery and changes to the old database remain outside this increment.
 
 ## 1. Product direction and decisions
 
@@ -389,7 +389,7 @@ The spending commitment is $0 for the pilot; the availability commitment must ma
 
 Updated 26 October 2026 in response to the request for a complete step-by-step approach. This replaces the earlier ordering in this section. It is a recommended implementation sequence, not authorization to start implementation or a claim that the stages have passed. Section 9 remains the release scope; sections 21–28 provide the detailed rules and open decisions.
 
-Stage 0 scope/research deliverables are recorded in section 29, and the completed local framework increment is recorded in section 30. Public signup and feature simplifications are confirmed; provider launch gates remain open. The next database/auth increment is detailed in section 31 and awaits approval.
+Stage 0 scope/research deliverables are recorded in section 29, and the completed local framework increment is recorded in section 30. Public signup and feature simplifications are confirmed; provider launch gates remain open. Section 31's database/auth increment was approved on 27 October for local implementation; the credential-dependent Neon/Google checks were then explicitly postponed by the user.
 
 ### Where to start
 
@@ -1090,7 +1090,7 @@ Outstanding finer policies stay in their owning sections; a developer must resol
 
 ## 31. Fresh database and Better Auth — step-by-step implementation plan
 
-Prepared 27 October 2026. **Status: awaiting the user's approval.** The user requested a concrete plan, addition to this master file, and implementation only after approval. This turn researches and updates the plan; it does not install dependencies, change application code/configuration, generate a schema, run migrations or provision resources. Section 30's existing framework changes remain intact.
+Prepared 27 October 2026. **Status: approved by the user on 27 October; local implementation authorized.** The earlier planning turn only researched and updated this plan. The user subsequently replied “yes you can proceed,” then chose “Set these up later; finish the local checks” for Google OAuth and Neon. Section 30's framework changes were saved as checkpoint `7319b0f208a2aca6f0c5bbbd76ff7ca74789e0f6`; implementation proceeds in the isolated checkout described below, preserving the original app.
 
 ### What this next increment will deliver
 
@@ -1238,4 +1238,70 @@ Design the future financial relationships from section 26 now, but create their 
 
 Needed when the dependent check is reached: Google OAuth client settings for the chosen local URL, an identified Neon Free development target/connection strings, and later a validated free real-email sender. Enter secrets through local ignored settings/provider consoles rather than pasting them into this plan. Missing external settings do not prevent the independent local schema/auth work.
 
-Approval has not yet been received. Implementation must wait for the user's reply; writing this plan or the passage of time does not constitute approval.
+Approval was received directly from the user on 27 October. The approved local scope and auth defaults above apply. Google/Neon configuration and real-provider checks were explicitly postponed; they must remain labelled pending rather than simulated as completed.
+
+## 32. Local fresh-database and Better Auth implementation result
+
+Recorded 27 October 2026 after the user approved section 31 and then requested: “Set these up later; finish the local checks.” **The local auth/private-budget foundation is implemented and verified.** Real Google OAuth, Neon, real email delivery and public deployment remain deferred; this is not completion of all stage 2/public-release gates or the financial features.
+
+### Where to continue and how to run it
+
+| Item | Current location/state |
+|---|---|
+| Shared master plan | `C:\Users\MasterMoh\bmo-budget-app\bmo-modernization-plan.md`; authoritative across chats. The development checkout carries a synchronized reference copy. |
+| Original app/reference | `C:\Users\MasterMoh\bmo-budget-app`; its source/configuration and old database were preserved. Framework work and the approved plan were saved as local checkpoint `7319b0f208a2aca6f0c5bbbd76ff7ca74789e0f6`. |
+| New development copy | `C:\Users\MasterMoh\Documents\Codex\bimo-database-auth`, branch `codex/database-auth-foundation`. Continue foundation/financial implementation here. The app's worktree helper could not identify a repository from the projectless chat, so this is a standard Git worktree created directly from the checkpoint. |
+| App preview | `http://localhost:3100`; binds locally. The previous application's port/configuration is separate. |
+| Private test inbox | `http://127.0.0.1:8025`; Mailpit captures local verification/reset/change-email/welcome messages. No real recipients were contacted. |
+| Database | New PostgreSQL 17 container on loopback port 5433, separate Docker volume and `bimo_modern_dev`, `bimo_modern_test`, `bimo_modern_shadow` databases. No legacy rows were imported. |
+| Reproduce setup | In the development copy: `npm ci --ignore-scripts`, `npm run local:setup`, `npm run dev`. The new README documents tests, migrations, recovery and provider settings. |
+
+`local:setup` generates ignored development settings/random secrets only when absent, starts the separate pinned-image services, creates missing isolated test/shadow databases, generates Prisma Client and deploys the reviewed modern migration. Rerunning setup was checked: settings/records were preserved and there were no pending migrations. It does not reset databases or delete volumes.
+
+### What now works locally
+
+- Email/password signup using Better Auth's password implementation and the approved 12–128 bounds; required email verification; resend, generic recovery, one-hour reset links and rejection of expired/reused links.
+- Database-backed sessions, seven-day rolling lifetime/daily renewal setting, separate `bimo-foundation` cookie prefix, HttpOnly cookies and disabled cookie session-data caching. Old NextAuth cookies do not authenticate this version.
+- Current-device logout, session listing/revocation, sign-out-all, password reset revocation, password changes that revoke other sessions, and 15-minute fresh-authentication checks for sensitive changes.
+- Display-name editing and the verified email-change flow: current-address approval followed by new-address verification, preserving the same user/budget identity. No raw profile update bypasses verified identity changes.
+- Google sign-in and explicit linking configuration with identity scopes only, no implicit same-email linking, no unlinking the last working method and encrypted provider-token configuration. Google controls are disabled while credentials are absent. **No real Google round trip has been claimed.** A test-only Google-account database fixture proved the supported add-password and last-method safeguards; it is not an OAuth-provider simulation or production credential.
+- Explicit short private-budget setup, NGN/Africa-Lagos defaults, ownership derived from the budget owner, non-owner editor/viewer membership records, an atomic budget/settings save, request-key/fingerprint duplicate protection and accessible-budget listing/opening after returning login.
+- Budget API reads/renames check current owner/membership on the server; a viewer cannot rename, an editor cannot change ownership through that endpoint, and removed members lose future access while retaining their login identity. Sharing administration/invitations remain later work; these checks do not establish full concurrent household ownership-transfer behavior.
+- Persistent Better Auth rate limiting plus account-aware mutation limits. Both built-in shared counters and custom server-side counters passed concurrent tests. No Redis was added.
+- A unique verified-user welcome outbox event, local captured delivery, bounded retries and cleanup tooling. Normal repeated logins/verification do not create repeated welcomes. If sending is interrupted after a claim, `SENDING` remains for manual review rather than blindly risking duplicate SMTP delivery; hosted reconciliation is still needed before real mail is enabled.
+
+The active new app has one auth system. Its former `app`, `components`, `hooks`, `lib`, `types`, seed and build-style configuration were preserved under `legacy-reference/` and excluded from the active build/lint. The old Prisma schema/migrations remain reference files; `prisma.config.ts` explicitly selects the modern path. The standalone legacy socket source remains preserved, but the new app has no chat/socket consumer. Unported financial/debug/deletion API paths are gated unavailable rather than calling old code against new tables. Account deletion remains deliberately disabled until ownership/retention behavior is implemented.
+
+### Schema, migrations and packages
+
+Better Auth's pinned generator produced the raw identity/session/account/verification/rate-limit contract in `prisma/modern/generated-auth.prisma`. The reviewed `prisma/modern/schema.prisma` adds the private-budget, membership, settings and outbox relations, generated-client output, provider-account uniqueness and useful indexes. There are nine application models at this checkpoint, plus Prisma's migration-history table.
+
+Initial migration: `prisma/modern/migrations/20261027194055_bimo_auth_private_budgets/migration.sql`. SQL was inspected and applied to the new development database; an empty test database was separately recreated with `prisma migrate deploy`, and repeating deployment was a no-op. The owner foreign key prevents an identity deletion from cascading through owned budgets. Runtime and Prisma-configuration guards reject the old `budget_app` database and mismatched declared targets; development migration preflight also checks database identity/history. A reserved shadow target is checked separately.
+
+Pinned stack: Next.js 16.4.3; React/React DOM 19.3.1; Better Auth/Prisma adapter/auth CLI 1.7.14; Prisma CLI/Client/PostgreSQL adapter 7.10.1; pg 8.23.1; Nodemailer 10.2.1; Node 24. Jiti 2.7.0 supplies the CLI's documented Windows/TypeScript configuration compatibility. Prisma 8 prereleases were not adopted. No forced or legacy peer-resolution flags were used. Obsolete app dependencies were removed from the new active package set; original declarations/lockfiles remain in the preserved app/checkpoint.
+
+Docker images were pinned to their verified pulled digests for reproducible local services. PostgreSQL and Mailpit publish only loopback ports. The ignored `.env` contains new random local secrets, not copied production/provider credentials.
+
+### Evidence and checks
+
+| Check | Actual result |
+|---|---|
+| Clean lockfile install | `npm ci --ignore-scripts` passed in the new checkout. |
+| Production build | `npm run build` passed with the supported Webpack option; client generation did not apply database changes. |
+| Type checking | `npm run typecheck -- --incremental false` passed. |
+| Lint | `npm run lint` passed with no active-code errors/warnings. The preserved reference code is explicitly outside this milestone's active lint scope; this does not claim the old app's lint findings were repaired. |
+| Integration suite | `npm test` passed all 18 reported tests: 17 scenarios plus the parent journey. Tests used the disposable PostgreSQL database, private Mailpit and two real local production instances on ports 3110/3111; owned test processes were stopped afterward. |
+| Auth/permissions | Unverified and anonymous denial, legacy-cookie rejection, captured verification, no automatic budget, hashed passwords, private access, viewer/editor checks, membership removal, protected ownership, origin rejection, last-method protection and freshness were exercised. |
+| Recovery/devices | Generic known/unknown recovery response, expired/reused links, two-session reset revocation, password-change revocation, email change, individual-device revocation, session expiry and sign-out-all passed. |
+| Concurrency | Eight concurrent identical creation requests produced one budget; conflicting reuse was rejected. A 12-request rate-limit burst split across two instances admitted five and rejected seven. Custom mutation counters also passed concurrent denial and expiry recovery. |
+| Real browser | Playwright CLI completed signup → captured email verification → short setup → private budget → second-context login → device revocation → logout → returning login. The final run explicitly checked that no request put a password in a URL. Screenshots capture signup, setup, budget list/detail and account security. No real provider credentials were used. |
+| Dependency audit | After targeted compatible updates to five transitive packages, `npm audit` reported zero advisories (including development dependencies) and `npm ls --all` exited 0 without dependency-tree problems. This is advisory evidence, not a whole-app security certification. ESLint 9's deprecation/toolchain limitation remains recorded. |
+| Preservation | Hash comparison confirmed all 156 original application/configuration files unchanged; normalized source comparison confirmed 109 legacy source files retained in the development archive, and the legacy Prisma schema/migration files remained preserved. The shared master plan is intentionally updated. No old database migration/reset/delete was performed. |
+
+Evidence directory: `C:\Users\MasterMoh\.codex\visualizations\2026\10\25\01a173e9-b493-7902-9acb-c6ccae4374e8\auth-foundation-2026-10-27`, including build/integration output, current audit/dependency tree, preservation checks and six browser screenshots. Initial test-harness failures (the disabled Google provider correctly returned 404, a password label included its hint, and a service restart interrupted a browser check) were corrected/rechecked. A final browser timing test also exposed native GET submission before client hydration: every form now uses POST, submit controls stay disabled until handlers attach, and both served-HTML and browser URL regression checks pass. Only synthetic test credentials were involved. Welcome failure/backoff/three-attempt exhaustion also passed a local refused-SMTP fixture. Final test results above supersede interrupted attempts; captured inbox messages remain private test data.
+
+### Remaining gates and next milestone
+
+The user postponed Google/Neon setup explicitly. Keep real Google sign-in/linking/provider publication, an identified Neon Free development target, real free email delivery, Vercel deployment, hosted pool/reconnect behavior, Nigerian latency and capacity measurements pending. The current auth base URL and SMTP transport are deliberately local-only. Do not treat local callback/inbox tests or a fixture Google account as hosted/provider verification.
+
+The next implementation milestone is stage 3: introduce the reviewed financial account/category/transaction/entry/assignment/operation/audit tables together with exact, authorized financial operations and tests. Continue in `C:\Users\MasterMoh\Documents\Codex\bimo-database-auth`. Prove the section 22 income/expense/transfer scenario and retry/rollback/permission cases before enabling money entry. Full household invitations/administration, tutorial, Gmail drafts, visual integration and the separate mobile composition remain in their agreed later stages. No useful first-release feature was silently dropped by isolating this foundation.

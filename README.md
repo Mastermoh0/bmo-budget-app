@@ -1,290 +1,44 @@
-# BMO — Budget Money Online 🏦
+# Bimo authentication and private-budget foundation
 
-A YNAB-inspired collaborative personal finance app with real-time multi-user sync.
+This isolated development copy implements the approved database/Better Auth milestone. The original Next.js-upgraded app is preserved at `C:\Users\MasterMoh\bmo-budget-app`, checkpoint `7319b0f`. The current branch is `codex/database-auth-foundation`.
 
----
+The preview supports verified email/password registration, recovery, email/password changes, session management, private-budget setup and current owner/editor/viewer access. Financial entry, reports, sharing invitations, Gmail, chat and redesign are later milestones. Unported API paths return an explicit unavailable response; the previous source is preserved in `legacy-reference/`, outside the active build. The old Prisma schema/migrations and socket-server source remain reference material.
 
-## Tech Stack
+## Run locally
 
-| Layer | Technology |
-|---|---|
-| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS, Radix UI |
-| Backend | Next.js API Routes, NextAuth.js v4 (JWT) |
-| Database | PostgreSQL 15 via Prisma ORM |
-| Real-time | Socket.io server (separate Express process on port 3001) |
-| State | Zustand, React Hook Form, Zod |
-| Email | Nodemailer (auto-falls back to Ethereal test emails in dev) |
+Use Node 24 and Docker Desktop. In this development checkout:
 
----
-
-## Prerequisites
-
-Install these before anything else:
-
-| Tool | Version | Download |
-|---|---|---|
-| **Node.js** | 24.x | https://nodejs.org |
-| **npm** | comes with Node.js | — |
-| **Docker Desktop** | latest | https://www.docker.com/products/docker-desktop |
-| **Git** | any | https://git-scm.com |
-
-> **Windows users:** Use PowerShell or Windows Terminal.  
-> **Mac/Linux users:** Use your default terminal.  
-> After installing Docker Desktop, make sure to **launch it** and wait until it shows "Docker is running" in the system tray before continuing.
-
----
-
-## Step-by-Step Setup
-
-### Step 1 — Clone the repository
-
-```bash
-git clone https://github.com/Mastermoh0/bmo-budget-app.git
-cd bmo-budget-app
-```
-
----
-
-### Step 2 — Install dependencies
-
-This project has two separate servers — install both:
-
-```bash
-# Main app (Next.js)
-npm install
-
-# Real-time socket server
-cd socket-server
-npm install
-cd ..
-```
-
----
-
-### Step 3 — Create environment files
-
-You need **two** `.env` files. Create them in the project root (`bmo-budget-app/`):
-
-#### File 1: `.env.local` (for the Next.js app)
-
-Create a file named `.env.local` and paste this content:
-
-```env
-# Database
-DATABASE_URL="postgresql://budget_user:budget_password@localhost:5432/budget_app"
-
-# NextAuth — authentication
-NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="local-dev-secret-please-change-in-production"
-
-# Socket server
-NEXT_PUBLIC_SOCKET_URL="http://localhost:3001"
-
-# Email (optional — leave blank to use fake test emails in development)
-SMTP_HOST=""
-SMTP_PORT="587"
-SMTP_USER=""
-SMTP_PASS=""
-```
-
-#### File 2: `.env` (for Prisma CLI tools)
-
-Create a file named `.env` and paste this content:
-
-```env
-DATABASE_URL="postgresql://budget_user:budget_password@localhost:5432/budget_app"
-```
-
-> **Why two files?** Next.js reads `.env.local`. Prisma's CLI tools (`db:migrate`, `db:seed`, `db:studio`) only read `.env`. Both must exist.
-
----
-
-### Step 4 — Start the database
-
-Make sure Docker Desktop is open and running, then:
-
-```bash
-docker-compose up -d
-```
-
-Expected output:
-```
-✔ Network bmo-budget-app_default         Created
-✔ Volume "bmo-budget-app_postgres_data"  Created
-✔ Container budget-app-postgres          Started
-```
-
-To verify the database is healthy:
-```bash
-docker ps
-```
-You should see `budget-app-postgres` with status `Up`.
-
----
-
-### Step 5 — Set up the database schema
-
-Run migrations to create all tables:
-
-```bash
-npm run db:migrate
-```
-
-When asked for a migration name, type anything (e.g. `init`) and press Enter.
-
-> Already have migrations? It will apply them automatically without asking.
-
-Optionally seed with sample data:
-```bash
-npm run db:seed
-```
-
----
-
-### Step 6 — Start the app
-
-**Start both servers at once (recommended):**
-```bash
-npm run dev:all
-```
-
-**Or start them separately in two terminals:**
-```bash
-# Terminal 1
+```sh
+npm ci --ignore-scripts
+npm run local:setup
 npm run dev
-
-# Terminal 2
-npm run dev:socket
 ```
 
----
+Open [Bimo](http://localhost:3100) and the private [Mailpit test inbox](http://127.0.0.1:8025). Register a synthetic address ending in `example.invalid`, open its captured verification link, then explicitly create a private NGN budget. Local email is captured and never delivered to real inboxes.
 
-### Step 7 — Open the app
+Setup generates `.env` with random development secrets only if that file does not already exist. It starts separate loopback-only PostgreSQL (port 5433) and Mailpit containers, creates new dev/test/shadow databases and applies the reviewed modern migrations. It never resets a database or deletes a Docker volume. Re-running setup preserves existing records and settings. Do not use the legacy `docker-compose.yml` or old seeding instructions for this preview.
 
-Visit **[http://localhost:3000](http://localhost:3000)** in your browser.
+## Verify
 
-You'll see the BMO sign-in page. Click **"Create one now"** to register your first account and complete onboarding.
-
----
-
-## Available Scripts
-
-| Command | Description |
-|---|---|
-| `npm run dev` | Start Next.js dev server (port 3000) |
-| `npm run dev:socket` | Start Socket.io server (port 3001) |
-| `npm run dev:all` | Start both servers together |
-| `npm run build` | Build for production |
-| `npm run typecheck` | Check TypeScript without building |
-| `npm run lint` | Check source files with ESLint |
-| `npm run start` | Start production server |
-| `npm run db:generate` | Regenerate Prisma client after schema changes |
-| `npm run db:migrate` | Apply database migrations |
-| `npm run db:seed` | Seed with sample data |
-| `npm run db:studio` | Open Prisma Studio (visual DB browser) |
-
-The development and production build commands use Next.js's supported `--webpack` option. The default Turbopack builder failed during local Windows verification; revisit this choice when it can pass the same checks. Existing React lint findings remain tracked in [the modernization plan](bmo-modernization-plan.md#30-framework-upgrade-implementation-record).
-
----
-
-## Stopping the App
-
-```bash
-# Stop the dev servers
-Ctrl + C   (in the terminal running npm run dev:all)
-
-# Stop the database
-docker-compose down
-
-# Stop database AND delete all data (fresh start)
-docker-compose down -v
-```
-
----
-
-## Folder Structure
-
-```
-bmo-budget-app/
-├── app/                  # Next.js App Router
-│   ├── api/             # Backend API routes
-│   ├── auth/            # Sign-in, sign-up, password reset
-│   ├── accounts/        # Account management
-│   ├── transactions/    # Transaction management
-│   ├── reports/         # Financial reports
-│   └── teams/           # Budget group collaboration
-├── components/           # Reusable React components
-├── lib/                  # Auth, DB client, email, socket helpers
-├── prisma/               # Schema & migrations
-│   ├── schema.prisma    # Database model definitions
-│   └── seed.ts          # Sample data script
-├── socket-server/        # Standalone Socket.io Express server
-├── hooks/                # Custom React hooks
-├── types/                # TypeScript type definitions
-├── docker-compose.yml    # Local PostgreSQL setup
-├── .env                  # Prisma CLI env vars (DATABASE_URL)
-└── .env.local            # Next.js app env vars (all variables)
-```
-
----
-
-## Common Issues & Fixes
-
-### ❌ `docker-compose up` fails — "cannot connect" or "pipe not found"
-Docker Desktop is not running. Open Docker Desktop from your Start Menu / Applications and wait until the icon in the system tray shows "Docker is running", then retry.
-
-### ❌ `npm run db:migrate` — "Environment variable not found: DATABASE_URL"
-Your `.env` file is missing or in the wrong location. Make sure a file named exactly `.env` (not `.env.local`) exists in the project root with `DATABASE_URL` inside it.
-
-### ❌ `[next-auth] No secret configured`
-Ensure `.env.local` exists and contains `NEXTAUTH_SECRET=...`.
-
-### ❌ Port 3000 or 3001 already in use
-
-**Windows (PowerShell):**
-```powershell
-npx kill-port 3000 3001
-```
-
-**Mac/Linux:**
-```bash
-lsof -ti:3000 | xargs kill -9
-lsof -ti:3001 | xargs kill -9
-```
-
-### ❌ Real-time features not working (live sync, chat)
-The socket server must be running. Use `npm run dev:all` instead of just `npm run dev`.
-
-### ❌ Email not sending / no email received
-In development, emails are routed to **Ethereal** (a fake inbox). After triggering a password reset or invitation, look at your terminal for a line like:
-```
-Preview URL: https://ethereal.email/message/...
-```
-Click that link to view the email. No SMTP setup is required in development.
-
-### ❌ `PrismaClientInitializationError`
-Regenerate the client: `npm run db:generate`, then retry.
-
----
-
-## Production Checklist
-
-When deploying to a real server, update these values:
-
-- `DATABASE_URL` → your managed PostgreSQL URL (Supabase, Neon, Railway, etc.)
-- `NEXTAUTH_SECRET` → run `openssl rand -base64 32` for a secure value
-- `NEXTAUTH_URL` → your actual domain (e.g. `https://yourdomain.com`)
-- `NEXT_PUBLIC_SOCKET_URL` → your deployed socket server URL
-- `SMTP_*` → your real transactional email provider credentials
-
-Build for production:
-```bash
+```sh
+npm run typecheck
+npm run lint
 npm run build
-npm run start
+npm test
 ```
 
----
+Tests require the local services. `npm test` applies the modern migrations to `bimo_modern_test`, checks a second deployment is a no-op, launches two temporary production instances on ports 3110/3111, tests the complete auth/permission/retry/revocation flows and stops those processes afterward. Only synthetic test records are added; the old database is never a test target.
 
-## License
+`npm run build` generates the client and build assets without changing database tables. `npm run db:deploy` validates the declared target and applies reviewed migrations. `npm run db:migrate -- --name bimo_description` creates the next development migration after validation. All Prisma commands use `prisma.config.ts` and `prisma/modern/`; never run reset or `db push` against the old schema. Database target guards reject `budget_app` and mismatched targets.
 
-MIT — see [LICENSE](LICENSE) for details.
+`npm run mail:retry` processes up to ten due welcome messages (at most three send attempts per event) and prunes expired auth session/rate-limit rows. A sender interrupted after claiming a message leaves `SENDING` for review rather than automatically risking a duplicate; external SMTP cannot promise exactly-once delivery across a process crash.
+
+## Credentials and hosted checks deferred by the user
+
+Google sign-in/linking is wired for identity scopes only and disabled until both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are placed in the ignored `.env`. Register `http://localhost:3100/api/auth/callback/google` in that OAuth client. There is no Gmail permission or mailbox integration here. Do not put secrets in Git or chat.
+
+Neon is the selected future host for PostgreSQL. Its isolated development target needs a pooled runtime `DATABASE_URL`, direct `DATABASE_URL_UNPOOLED` and matching explicit `BIMO_DATABASE_TARGET`. The current auth base URL is deliberately restricted to loopback until public deployment/sender settings are reviewed. The user postponed real Google, Neon and real email checks on 27 October; no paid plan, public signup deployment or cloud resource was created.
+
+Better Auth 1.7.14 and Prisma CLI/Client/PG adapter 7.10.1 are pinned. `auth` plus `jiti` are development-only schema tooling. Auth models were produced by `npx --no-install auth generate --config ./lib/auth.ts --output ./prisma/modern/generated-auth.prisma --yes`; `schema.prisma` adds the reviewed domain relations and client output path. Keep the generated auth contract aligned when changing auth options/plugins.
+
+The original repository's `bmo-modernization-plan.md` is the shared master plan. This checkout carries a synchronized reference copy for review; update the original when recording progress.

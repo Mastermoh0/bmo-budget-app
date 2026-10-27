@@ -87,4 +87,8 @@ ehthumbs.db
 Desktop.ini
 
 # Prisma
-/prisma/migrations/migration_lock.toml 
+/prisma/migrations/migration_lock.toml
+
+# Generated modern Prisma client and private test output
+/generated/
+/test-results/
