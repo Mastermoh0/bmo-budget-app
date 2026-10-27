@@ -16,7 +16,7 @@ const createTransporter = () => {
     })
   } else {
     // Development: Create a test account (this creates an ethereal.email account for testing)
-    return new Promise((resolve, reject) => {
+    return new Promise<nodemailer.Transporter>((resolve, reject) => {
       nodemailer.createTestAccount((err, account) => {
         if (err) {
           console.error('Failed to create test account:', err)
@@ -278,7 +278,8 @@ This invitation was sent to ${email}
     }
     
     return { success: true, messageId: info.messageId, previewUrl: nodemailer.getTestMessageUrl(info) }
-  } catch (error) {
+  } catch (cause) {
+    const error = cause instanceof Error ? cause : new Error(String(cause))
     console.error('Invitation email sending error:', error)
     return { success: false, error: error.message }
   }
@@ -445,7 +446,8 @@ This email was sent to ${email}
     }
 
     return { success: true, messageId: info.messageId }
-  } catch (error) {
+  } catch (cause) {
+    const error = cause instanceof Error ? cause : new Error(String(cause))
     console.error('Email sending error:', error)
     return { success: false, error: error.message }
   }

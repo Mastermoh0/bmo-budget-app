@@ -75,12 +75,13 @@ export async function GET() {
       databaseConnection: 'Working',
       totalUsers: userCount,
       totalSessions: sessionCount,
-      hasBudgetGroup: user?.memberships?.length > 0,
+      hasBudgetGroup: (user?.memberships?.length ?? 0) > 0,
       recommendation: user ? 
         (user.memberships?.length > 0 ? 'User setup is complete' : 'User needs budget group creation') : 
         'User record is missing - sign out and sign in again'
     })
-  } catch (error) {
+  } catch (cause) {
+    const error = cause instanceof Error ? cause : new Error(String(cause))
     console.error('Debug endpoint error:', error)
     return NextResponse.json({
       status: 'Error',

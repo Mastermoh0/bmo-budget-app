@@ -38,7 +38,7 @@ export function CategorySearchInput({
   
   const searchInputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const debounceRef = useRef<NodeJS.Timeout>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Find selected category name for display
   useEffect(() => {

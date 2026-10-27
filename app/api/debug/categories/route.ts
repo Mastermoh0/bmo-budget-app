@@ -58,8 +58,7 @@ export async function GET() {
         },
         _count: {
           select: {
-            categoryGroups: true,
-            categories: true
+            categoryGroups: true
           }
         }
       }
@@ -117,7 +116,8 @@ export async function GET() {
         )
       }
     })
-  } catch (error) {
+  } catch (cause) {
+    const error = cause instanceof Error ? cause : new Error(String(cause))
     console.error('❌ Debug error:', error)
     return NextResponse.json(
       { error: 'Debug failed', details: error.message },

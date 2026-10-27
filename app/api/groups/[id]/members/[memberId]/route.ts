@@ -5,8 +5,9 @@ import { prisma } from '@/lib/db'
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; memberId: string } }
+  { params }: { params: Promise<{ id: string; memberId: string }> }
 ) {
+  const resolvedParams = await params
   try {
     const session = await getServerSession(authOptions)
     
@@ -14,8 +15,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const groupId = params.id
-    const memberIdToRemove = params.memberId
+    const groupId = resolvedParams.id
+    const memberIdToRemove = resolvedParams.memberId
 
     // Check if current user is an OWNER of this group
     const userMembership = await prisma.groupMember.findFirst({

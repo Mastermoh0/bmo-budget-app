@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['localhost'],
+    remotePatterns: [{ hostname: 'localhost' }],
   },
   // socket.io must be treated as a server-only external package
   serverExternalPackages: ['socket.io'],
@@ -15,4 +15,4 @@ const nextConfig = {
   },
 }
 
-module.exports = nextConfig 
+module.exports = nextConfig

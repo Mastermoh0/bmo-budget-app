@@ -149,10 +149,11 @@ async function reverseAccountBalances(fromAccountId: string, toAccountId: string
   }
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params
   try {
     const transaction = await prisma.transaction.findUnique({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       include: {
         fromAccount: {
           select: {
@@ -194,7 +195,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params
   try {
     const session = await getServerSession(authOptions)
     
@@ -251,7 +253,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     // Get the original transaction to reverse its effects
     const originalTransaction = await prisma.transaction.findUnique({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
     })
 
     if (!originalTransaction) {
@@ -268,7 +270,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (originalTransaction.categoryId && !originalTransaction.toAccountId) {
       await reverseBudgetActivity(
         originalTransaction.categoryId,
-        originalTransaction.amount < 0 ? originalTransaction.amount : -Number(originalTransaction.amount),
+        -Math.abs(Number(originalTransaction.amount)),
         originalTransaction.date,
         userMembership.groupId
       )
@@ -279,7 +281,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     // Update the transaction
     const updatedTransaction = await prisma.transaction.update({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       data: {
         date: transactionDate,
         amount: transactionAmount,
@@ -335,7 +337,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params
   try {
     const session = await getServerSession(authOptions)
     
@@ -383,7 +386,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
     // Get the transaction to reverse its effects
     const transaction = await prisma.transaction.findUnique({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
     })
 
     if (!transaction) {
@@ -400,7 +403,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     if (transaction.categoryId && !transaction.toAccountId) {
       await reverseBudgetActivity(
         transaction.categoryId,
-        transaction.amount < 0 ? transaction.amount : -Number(transaction.amount),
+        -Math.abs(Number(transaction.amount)),
         transaction.date,
         userMembership.groupId
       )
@@ -408,7 +411,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
     // Delete the transaction
     await prisma.transaction.delete({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
     })
 
     return NextResponse.json({ message: 'Transaction deleted successfully' })

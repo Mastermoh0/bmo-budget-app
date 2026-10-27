@@ -8,7 +8,7 @@ A YNAB-inspired collaborative personal finance app with real-time multi-user syn
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 14 (App Router), TypeScript, Tailwind CSS, Radix UI |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS, Radix UI |
 | Backend | Next.js API Routes, NextAuth.js v4 (JWT) |
 | Database | PostgreSQL 15 via Prisma ORM |
 | Real-time | Socket.io server (separate Express process on port 3001) |
@@ -23,7 +23,7 @@ Install these before anything else:
 
 | Tool | Version | Download |
 |---|---|---|
-| **Node.js** | 18 or higher | https://nodejs.org |
+| **Node.js** | 24.x | https://nodejs.org |
 | **npm** | comes with Node.js | — |
 | **Docker Desktop** | latest | https://www.docker.com/products/docker-desktop |
 | **Git** | any | https://git-scm.com |
@@ -175,11 +175,15 @@ You'll see the BMO sign-in page. Click **"Create one now"** to register your fir
 | `npm run dev:socket` | Start Socket.io server (port 3001) |
 | `npm run dev:all` | Start both servers together |
 | `npm run build` | Build for production |
+| `npm run typecheck` | Check TypeScript without building |
+| `npm run lint` | Check source files with ESLint |
 | `npm run start` | Start production server |
 | `npm run db:generate` | Regenerate Prisma client after schema changes |
 | `npm run db:migrate` | Apply database migrations |
 | `npm run db:seed` | Seed with sample data |
 | `npm run db:studio` | Open Prisma Studio (visual DB browser) |
+
+The development and production build commands use Next.js's supported `--webpack` option. The default Turbopack builder failed during local Windows verification; revisit this choice when it can pass the same checks. Existing React lint findings remain tracked in [the modernization plan](bmo-modernization-plan.md#30-framework-upgrade-implementation-record).
 
 ---
 

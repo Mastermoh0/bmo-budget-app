@@ -108,7 +108,8 @@ export function BudgetSidebar() {
             className="w-8 h-8 rounded-lg"
             onError={(e) => {
               e.currentTarget.style.display = 'none';
-              e.currentTarget.nextElementSibling.style.display = 'flex';
+              const fallback = e.currentTarget.nextElementSibling
+              if (fallback instanceof HTMLElement) fallback.style.display = 'flex';
             }}
           />
           <div className="w-8 h-8 bg-ynab-blue rounded-lg flex items-center justify-center" style={{ display: 'none' }}>

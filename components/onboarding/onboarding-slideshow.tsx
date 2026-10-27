@@ -432,7 +432,8 @@ export default function OnboardingSlideshow() {
         console.error('❌ Server error:', errorData)
         throw new Error(`Failed to complete onboarding: ${errorData.details || 'Unknown error'}`)
       }
-    } catch (error) {
+    } catch (cause) {
+      const error = cause instanceof Error ? cause : new Error(String(cause))
       console.error('❌ Error completing onboarding:', error)
       alert(`Onboarding failed: ${error.message}`)
       setIsLoading(false)
@@ -473,7 +474,8 @@ export default function OnboardingSlideshow() {
         console.error('❌ Server error:', errorData)
         throw new Error(`Failed to skip onboarding: ${errorData.details || 'Unknown error'}`)
       }
-    } catch (error) {
+    } catch (cause) {
+      const error = cause instanceof Error ? cause : new Error(String(cause))
       console.error('❌ Error skipping onboarding:', error)
       alert(`Onboarding skip failed: ${error.message}`)
       setIsLoading(false)

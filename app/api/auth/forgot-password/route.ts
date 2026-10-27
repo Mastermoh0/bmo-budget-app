@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     })
 
     // Send OTP email
-    const emailResult = await sendOtpEmail(user.email, otp, user.name)
+    const emailResult = await sendOtpEmail(user.email, otp, user.name ?? undefined)
 
     if (!emailResult.success) {
       // If email fails, clean up the token

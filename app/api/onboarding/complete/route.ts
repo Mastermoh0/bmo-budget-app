@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       data: {
         name: answers.name,
         hasCompletedOnboarding: true,
-        onboardingData: answers
+        onboardingData: { ...answers }
       }
     })
 
@@ -75,7 +75,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch (cause) {
+    const error = cause instanceof Error ? cause : new Error(String(cause))
     console.error('❌ Error completing onboarding:', error)
     console.error('Stack trace:', error.stack)
     return NextResponse.json(
@@ -85,7 +86,24 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function createPersonalizedCategories(groupId: string, answers: OnboardingData) {
+async function createPersonalizedCategories(groupId: string, input: OnboardingData) {
+  const answers = {
+    ...input,
+    housingType: input.housingType ?? '',
+    primaryGoals: input.primaryGoals ?? [],
+    debtTypes: input.debtTypes ?? [],
+    savingsGoals: input.savingsGoals ?? [],
+    expenseCategories: input.expenseCategories ?? [],
+    shoppingHabits: input.shoppingHabits ?? [],
+    healthWellness: input.healthWellness ?? [],
+    transportation: input.transportation ?? [],
+    subscriptions: input.subscriptions ?? [],
+    hobbiesInterests: input.hobbiesInterests ?? [],
+    familyPets: input.familyPets ?? [],
+    workEducation: input.workEducation ?? [],
+    irregularExpenses: input.irregularExpenses ?? [],
+    budgetingChallenges: input.budgetingChallenges ?? [],
+  }
   const categoryGroups: { name: string; categories: string[] }[] = []
   console.log('📝 Starting category creation with answers:', {
     housingType: answers.housingType,

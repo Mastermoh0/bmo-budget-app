@@ -21,9 +21,11 @@ interface Category {
   budgeted: number
   activity: number
   available: number
+  isHidden?: boolean
 }
 
 interface CategoryGroup {
+  groupId?: string
   id: string
   name: string
   categories: Category[]
@@ -754,6 +756,7 @@ export function BudgetMain({
       {canEdit && (
         <CategoryGroupEditor
           group={null}
+          planId={selectedPlanId}
           onUpdate={handleUpdateGroup}
           onDelete={handleDeleteGroup}
           onAdd={handleAddGroup}
@@ -801,6 +804,7 @@ export function BudgetMain({
               {/* Group Header with Editor */}
               <CategoryGroupEditor
                 group={group}
+                planId={selectedPlanId}
                 isExpanded={isExpanded}
                 onToggle={toggleGroup}
                 onUpdate={handleUpdateGroup}
@@ -841,13 +845,14 @@ export function BudgetMain({
                           {category.name}
                         </span>
                         {category.isHidden && (
-                          <EyeOff className="w-3 h-3 text-gray-400" title="Hidden category" />
+                          <span title="Hidden category"><EyeOff className="w-3 h-3 text-gray-400" /></span>
                         )}
                         <Target className="w-3 h-3 text-ynab-gray-400" />
                       </div>
                       <div className="text-right">
                         {canEdit ? (
                           <BudgetAmountInput
+                            category={category}
                             categoryId={category.id}
                             initialAmount={category.budgeted}
                             month={currentMonth.toISOString()}
@@ -875,9 +880,9 @@ export function BudgetMain({
                   <CategoryEditor
                     category={null}
                     groupId={group.id}
-                    onUpdate={(cat) => handleUpdateCategory(group.id, cat)}
-                    onDelete={(catId) => handleDeleteCategory(group.id, catId)}
-                    onAdd={(cat) => handleAddCategory(group.id, cat)}
+                    onUpdate={(cat: Category) => handleUpdateCategory(group.id, cat)}
+                    onDelete={(catId: string) => handleDeleteCategory(group.id, catId)}
+                    onAdd={(cat: Category) => handleAddCategory(group.id, cat)}
                     showOnGroupHover={true}
                   />
                 </div>
@@ -948,4 +953,4 @@ export function BudgetMain({
       />
     </div>
   )
-} 
+}

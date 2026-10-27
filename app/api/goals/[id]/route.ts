@@ -6,15 +6,16 @@ import { prisma } from '@/lib/db'
 // GET /api/goals/[id] - Get a specific goal
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const goalId = params.id
+    const goalId = resolvedParams.id
 
     // Fetch the goal and verify user has access
     const goal = await prisma.goal.findFirst({
@@ -52,15 +53,16 @@ export async function GET(
 // PUT /api/goals/[id] - Update a specific goal
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const goalId = params.id
+    const goalId = resolvedParams.id
     const data = await request.json()
 
     const {
@@ -139,15 +141,16 @@ export async function PUT(
 // DELETE /api/goals/[id] - Delete a specific goal
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const goalId = params.id
+    const goalId = resolvedParams.id
 
     // Verify the goal exists and user has access
     const existingGoal = await prisma.goal.findFirst({

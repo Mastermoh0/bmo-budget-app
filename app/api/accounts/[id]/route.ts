@@ -5,8 +5,9 @@ import { prisma } from '@/lib/db'
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params
   try {
     const session = await getServerSession(authOptions)
     
@@ -26,7 +27,7 @@ export async function GET(
 
     const account = await prisma.budgetAccount.findUnique({
       where: {
-        id: params.id,
+        id: resolvedParams.id,
         groupId: userMembership.groupId, // Use the user's actual group ID
       },
     })
@@ -50,8 +51,9 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params
   try {
     const session = await getServerSession(authOptions)
     
@@ -121,7 +123,7 @@ export async function PUT(
 
     const account = await prisma.budgetAccount.update({
       where: {
-        id: params.id,
+        id: resolvedParams.id,
         groupId: userMembership.groupId, // Use the user's actual group ID
       },
       data: {
@@ -156,8 +158,9 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params
   try {
     const session = await getServerSession(authOptions)
     
@@ -212,8 +215,8 @@ export async function DELETE(
     const transactionCount = await prisma.transaction.count({
       where: {
         OR: [
-          { fromAccountId: params.id },
-          { toAccountId: params.id },
+          { fromAccountId: resolvedParams.id },
+          { toAccountId: resolvedParams.id },
         ],
       },
     })
@@ -227,7 +230,7 @@ export async function DELETE(
 
     await prisma.budgetAccount.delete({
       where: {
-        id: params.id,
+        id: resolvedParams.id,
         groupId: userMembership.groupId, // Use the user's actual group ID
       },
     })

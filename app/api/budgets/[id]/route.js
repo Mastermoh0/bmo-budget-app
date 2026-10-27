@@ -5,7 +5,7 @@ import { getCurrentMonth } from '@/lib/utils'
 // Update budget amount for a specific category and month
 export async function PUT(request, { params }) {
   try {
-    const { id } = params // Changed from categoryId to id
+    const { id } = await params // Changed from categoryId to id
     const body = await request.json()
     const { budgeted, month: monthParam, groupId = 'demo-group' } = body
 
@@ -39,4 +39,4 @@ export async function PUT(request, { params }) {
     console.error('Failed to update budget:', error)
     return NextResponse.json({ error: 'Failed to update budget' }, { status: 500 })
   }
-} 
+}

@@ -1,9 +1,11 @@
+import type { Budget, Category, CategoryGroup, Transaction, Goal, BudgetAccount as Account } from '@prisma/client'
+
 // Re-export Prisma types
 export type {
   User,
-  Group,
+  BudgetGroup as Group,
   GroupMember,
-  Account,
+  BudgetAccount as Account,
   CategoryGroup,
   Category,
   Transaction,

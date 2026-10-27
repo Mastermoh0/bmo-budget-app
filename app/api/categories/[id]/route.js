@@ -30,7 +30,7 @@ export async function PUT(request, { params }) {
       }, { status: 403 })
     }
 
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const { name } = body
 
@@ -91,7 +91,7 @@ export async function DELETE(request, { params }) {
       }, { status: 403 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     // Verify the category group belongs to the user's budget group
     const categoryGroup = await prisma.categoryGroup.findFirst({
@@ -120,4 +120,4 @@ export async function DELETE(request, { params }) {
     console.error('Failed to delete category group:', error)
     return NextResponse.json({ error: 'Failed to delete category group' }, { status: 500 })
   }
-} 
+}

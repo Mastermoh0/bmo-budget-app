@@ -4,12 +4,13 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
+  const resolvedParams = await params
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
@@ -24,7 +25,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // Find the note and verify user has access
     const existingNote = await prisma.note.findUnique({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       include: {
         group: {
           include: {
@@ -53,7 +54,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // Update the note
     const updatedNote = await prisma.note.update({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       data: { content },
       include: {
         category: {
@@ -79,6 +80,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  const resolvedParams = await params
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
@@ -87,7 +89,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     // Find the note and verify user has access
     const existingNote = await prisma.note.findUnique({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       include: {
         group: {
           include: {
@@ -116,7 +118,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     // Delete the note
     await prisma.note.delete({
-      where: { id: params.id }
+      where: { id: resolvedParams.id }
     })
 
     return NextResponse.json({ success: true })

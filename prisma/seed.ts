@@ -6,7 +6,7 @@ async function main() {
   console.log('🌱 Starting database seeding...')
 
   // Create demo group
-  const demoGroup = await prisma.group.upsert({
+  const demoGroup = await prisma.budgetGroup.upsert({
     where: { id: 'demo-group' },
     update: {},
     create: {
@@ -21,7 +21,7 @@ async function main() {
 
   // Create demo accounts
   const accounts = await Promise.all([
-    prisma.account.upsert({
+    prisma.budgetAccount.upsert({
       where: { id: 'demo-checking' },
       update: {},
       create: {
@@ -35,7 +35,7 @@ async function main() {
         groupId: demoGroup.id,
       },
     }),
-    prisma.account.upsert({
+    prisma.budgetAccount.upsert({
       where: { id: 'demo-savings' },
       update: {},
       create: {
@@ -49,7 +49,7 @@ async function main() {
         groupId: demoGroup.id,
       },
     }),
-    prisma.account.upsert({
+    prisma.budgetAccount.upsert({
       where: { id: 'demo-credit' },
       update: {},
       create: {
@@ -63,7 +63,7 @@ async function main() {
         groupId: demoGroup.id,
       },
     }),
-    prisma.account.upsert({
+    prisma.budgetAccount.upsert({
       where: { id: 'demo-investment' },
       update: {},
       create: {
@@ -209,7 +209,7 @@ async function main() {
   const budgets = await Promise.all([
     prisma.budget.upsert({
       where: { 
-        categoryId_month_groupId: { 
+        groupId_categoryId_month: {
           categoryId: 'demo-rent', 
           month: currentMonth,
           groupId: demoGroup.id 
@@ -225,7 +225,7 @@ async function main() {
     }),
     prisma.budget.upsert({
       where: { 
-        categoryId_month_groupId: { 
+        groupId_categoryId_month: {
           categoryId: 'demo-utilities', 
           month: currentMonth,
           groupId: demoGroup.id 
@@ -241,7 +241,7 @@ async function main() {
     }),
     prisma.budget.upsert({
       where: { 
-        categoryId_month_groupId: { 
+        groupId_categoryId_month: {
           categoryId: 'demo-groceries', 
           month: currentMonth,
           groupId: demoGroup.id 
@@ -257,7 +257,7 @@ async function main() {
     }),
     prisma.budget.upsert({
       where: { 
-        categoryId_month_groupId: { 
+        groupId_categoryId_month: {
           categoryId: 'demo-gas', 
           month: currentMonth,
           groupId: demoGroup.id 

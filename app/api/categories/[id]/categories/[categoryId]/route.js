@@ -12,7 +12,7 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { categoryId } = params
+    const { categoryId } = await params
     const body = await request.json()
     const { name, budgeted, month, isHidden, planId } = body
 
@@ -185,7 +185,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { categoryId } = params
+    const { categoryId } = await params
 
     // Get user's group membership to ensure access
     const userMembership = await prisma.groupMember.findFirst({
@@ -228,4 +228,4 @@ export async function DELETE(request, { params }) {
     console.error('Failed to delete category:', error)
     return NextResponse.json({ error: 'Failed to delete category' }, { status: 500 })
   }
-} 
+}

@@ -139,7 +139,7 @@ export async function POST(request: Request) {
     }
 
     // If user doesn't have a budget group, they need to complete onboarding first
-    if (!userMembership) {
+    if (!userMembership || !budgetGroupId) {
       return NextResponse.json({ 
         error: 'No budget plan found',
         details: 'Please complete onboarding to create your first budget plan.'

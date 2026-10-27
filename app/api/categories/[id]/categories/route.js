@@ -30,7 +30,7 @@ export async function POST(request, { params }) {
       }, { status: 403 })
     }
 
-    const { id: groupId } = params
+    const { id: groupId } = await params
     const body = await request.json()
     const { name } = body
 
@@ -75,4 +75,4 @@ export async function POST(request, { params }) {
     console.error('Failed to create category:', error)
     return NextResponse.json({ error: 'Failed to create category' }, { status: 500 })
   }
-} 
+}

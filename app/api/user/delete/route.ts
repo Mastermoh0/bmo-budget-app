@@ -139,7 +139,8 @@ export async function GET(request: NextRequest) {
       }
     })
 
-  } catch (error) {
+  } catch (cause) {
+    const error = cause instanceof Error ? cause : new Error(String(cause))
     console.error('❌ Failed to check deletion requirements:', error)
     return NextResponse.json({ 
       error: 'Failed to check deletion requirements',
@@ -157,7 +158,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Safely parse JSON body - handle cases where body might be empty
-    let body = {}
+    let body: { confirmDeletion?: boolean } = {}
     try {
       const text = await request.text()
       if (text) {
@@ -280,6 +281,7 @@ export async function DELETE(request: NextRequest) {
       console.log(`📊 Found ${userBudgetGroups.length} budget groups to delete`)
 
       // 4. Handle ownership transfer for groups with other members
+      let groupsTransferred = 0
       for (const group of userBudgetGroups) {
         const groupId = group.id
         
@@ -314,6 +316,7 @@ export async function DELETE(request: NextRequest) {
             },
             data: { role: 'OWNER' }
           })
+          groupsTransferred += 1
 
           // Log the ownership transfer for audit purposes
           console.log(`✅ Successfully transferred ownership of group ${groupId} to user ${nextOwner.userId}`)
@@ -417,8 +420,8 @@ export async function DELETE(request: NextRequest) {
       console.log('✅ Account deletion completed successfully')
       
       return {
-        groupsDeleted: userBudgetGroups.filter(g => !transferOwnership.find(t => t.groupId === g.id)).length,
-        groupsTransferred: transferOwnership.length,
+        groupsDeleted: userBudgetGroups.length - groupsTransferred,
+        groupsTransferred,
         messagesAnonymized: anonymizedCount
       }
     })
@@ -429,7 +432,8 @@ export async function DELETE(request: NextRequest) {
       details: result
     })
 
-  } catch (error) {
+  } catch (cause) {
+    const error = cause instanceof Error ? cause : new Error(String(cause))
     console.error('❌ Failed to delete account:', error)
     console.error('Stack trace:', error.stack)
     

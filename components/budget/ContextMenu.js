@@ -4,6 +4,24 @@ import { useEffect, useRef } from 'react'
 import { EyeOff, Eye, X, Trash2, Target, Edit3, FolderOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
+/**
+ * @param {object} props
+ * @param {boolean} props.isOpen
+ * @param {{ x: number, y: number }} props.position
+ * @param {Function} props.onClose
+ * @param {Function} props.onHide
+ * @param {Function} props.onUnhide
+ * @param {Function} props.onDelete
+ * @param {Function} props.onSetTarget
+ * @param {Function} props.onBulkEdit
+ * @param {Function} props.onBulkDelete
+ * @param {Function} props.onMove
+ * @param {Function} props.onClearSelections
+ * @param {string} props.itemName
+ * @param {string} props.itemType
+ * @param {number} [props.selectedCount]
+ * @param {{ id: string, isHidden?: boolean }[]} [props.selectedCategories]
+ */
 export function ContextMenu({ 
   isOpen, 
   position, 
@@ -192,4 +210,4 @@ export function ContextMenu({
       )}
     </div>
   )
-} 
+}

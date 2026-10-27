@@ -5,8 +5,9 @@ import { prisma } from '@/lib/db'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params
   try {
     const session = await getServerSession(authOptions)
     
@@ -14,7 +15,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const groupId = params.id
+    const groupId = resolvedParams.id
 
     // Check if user is a member of this group
     const userMembership = await prisma.groupMember.findFirst({
@@ -33,16 +34,8 @@ export async function GET(
       where: {
         groupId: groupId,
         acceptedAt: null, // Only pending invitations
-        expiresAt: {
+        expires: {
           gt: new Date() // Not expired
-        }
-      },
-      include: {
-        invitedBy: {
-          select: {
-            name: true,
-            email: true
-          }
         }
       },
       orderBy: {
@@ -50,13 +43,19 @@ export async function GET(
       }
     })
 
+    const inviters = await prisma.user.findMany({
+      where: { id: { in: Array.from(new Set(invitations.map(invitation => invitation.invitedBy))) } },
+      select: { id: true, name: true, email: true }
+    })
+    const inviterById = new Map(inviters.map(inviter => [inviter.id, inviter]))
+
     const formattedInvitations = invitations.map(invitation => ({
       id: invitation.id,
       email: invitation.email,
       role: invitation.role,
       createdAt: invitation.createdAt.toISOString(),
-      expires: invitation.expiresAt.toISOString(),
-      invitedBy: invitation.invitedBy?.name || invitation.invitedBy?.email || 'Unknown'
+      expires: invitation.expires.toISOString(),
+      invitedBy: inviterById.get(invitation.invitedBy)?.name || inviterById.get(invitation.invitedBy)?.email || 'Unknown'
     }))
 
     return NextResponse.json({
@@ -70,4 +69,4 @@ export async function GET(
       { status: 500 }
     )
   }
-} 
+}

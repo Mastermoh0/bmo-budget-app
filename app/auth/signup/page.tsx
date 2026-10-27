@@ -116,7 +116,8 @@ export default function SignUpPage() {
                   className="w-16 h-16 rounded-2xl shadow-lg mx-auto"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
-                    e.currentTarget.nextElementSibling.style.display = 'flex';
+                    const fallback = e.currentTarget.nextElementSibling
+                    if (fallback instanceof HTMLElement) fallback.style.display = 'flex';
                   }}
                 />
                 <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg flex items-center justify-center mx-auto" style={{ display: 'none' }}>

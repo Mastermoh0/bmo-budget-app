@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Edit3, DollarSign } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,7 +28,7 @@ export function BulkEditModal({ isOpen, onClose, selectedCategories, onUpdate }:
   const [isLoading, setIsLoading] = useState(false)
 
   // Initialize names when modal opens
-  useState(() => {
+  useEffect(() => {
     if (isOpen && selectedCategories.length > 0) {
       const names: { [key: string]: string } = {}
       selectedCategories.forEach(cat => {
@@ -213,4 +213,4 @@ export function BulkEditModal({ isOpen, onClose, selectedCategories, onUpdate }:
       </div>
     </div>
   )
-} 
+}

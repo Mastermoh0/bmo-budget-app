@@ -70,7 +70,8 @@ export async function POST(request: NextRequest) {
 
         // Double-check each message against the group's policy
         const messagesToDeleteNow = messages.filter(msg => {
-          const hoursAnonymized = (Date.now() - new Date(msg.scheduledDelete).getTime() + (retentionHours * 60 * 60 * 1000)) / (1000 * 60 * 60)
+          if (!msg.scheduledDelete) return false
+          const hoursAnonymized = (Date.now() - msg.scheduledDelete.getTime() + (retentionHours * 60 * 60 * 1000)) / (1000 * 60 * 60)
           return hoursAnonymized >= retentionHours
         })
 
@@ -108,7 +109,8 @@ export async function POST(request: NextRequest) {
     console.log('✅ Message cleanup completed:', result)
     return NextResponse.json(result)
 
-  } catch (error) {
+  } catch (cause) {
+    const error = cause instanceof Error ? cause : new Error(String(cause))
     console.error('❌ Message cleanup job failed:', error)
     return NextResponse.json({ 
       success: false,
@@ -191,11 +193,12 @@ export async function GET(request: NextRequest) {
       },
       groupDetails: groupStats,
       nextCleanupNeeded: pendingDeletion.length > 0 ? 
-        Math.min(...pendingDeletion.map(m => m.scheduledDelete.getTime())) : null,
+        Math.min(...pendingDeletion.flatMap(m => m.scheduledDelete ? [m.scheduledDelete.getTime()] : [])) : null,
       timestamp: now.toISOString()
     })
 
-  } catch (error) {
+  } catch (cause) {
+    const error = cause instanceof Error ? cause : new Error(String(cause))
     console.error('Error getting cleanup status:', error)
     return NextResponse.json({ 
       error: 'Failed to get cleanup status',

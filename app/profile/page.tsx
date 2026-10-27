@@ -347,7 +347,7 @@ export default function ProfilePage() {
     )
   }
 
-  if (!profile && !isLoading) {
+  if (!profile) {
     // If profile failed to load and we're not loading, redirect to sign-in
     router.push('/auth/signin')
     return (

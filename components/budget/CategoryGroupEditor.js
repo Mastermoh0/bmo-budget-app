@@ -8,6 +8,20 @@ import { formatCurrency } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
+/**
+ * @param {object} props
+ * @param {{ id: string, name: string, categories: object[] } | null} props.group
+ * @param {Function} props.onUpdate
+ * @param {Function} props.onDelete
+ * @param {Function} props.onAdd
+ * @param {boolean} [props.isExpanded]
+ * @param {Function} [props.onToggle]
+ * @param {Function} [props.onAddCategory]
+ * @param {string} props.planId
+ * @param {boolean} [props.isSelected]
+ * @param {Function} [props.onToggleSelection]
+ * @param {Function} [props.onSelectAll]
+ */
 export function CategoryGroupEditor({ group, onUpdate, onDelete, onAdd, isExpanded, onToggle, onAddCategory, planId, isSelected, onToggleSelection, onSelectAll }) {
   const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
@@ -375,4 +389,4 @@ export function CategoryGroupEditor({ group, onUpdate, onDelete, onAdd, isExpand
       )}
     </div>
   )
-} 
+}

@@ -126,7 +126,8 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json(result, { status: 201 })
-  } catch (error) {
+  } catch (cause) {
+    const error = cause instanceof Error ? cause : new Error(String(cause))
     console.error('Failed to create category group - Detailed error:', error)
     console.error('Error name:', error.name)
     console.error('Error message:', error.message)
@@ -143,7 +144,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       error: 'Failed to create category group',
       details: error.message,
-      errorCode: error.code || 'UNKNOWN'
+      errorCode: ('code' in error && error.code) || 'UNKNOWN'
     }, { status: 500 })
   }
-} 
+}

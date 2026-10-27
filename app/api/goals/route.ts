@@ -242,7 +242,8 @@ export async function POST(request: NextRequest) {
       message: `Successfully created ${createdGoals.length} target${createdGoals.length === 1 ? '' : 's'}`,
       goals: createdGoals,
     })
-  } catch (error) {
+  } catch (cause) {
+    const error = cause instanceof Error ? cause : new Error(String(cause))
     console.error('Failed to create goals - Full error:', error)
     console.error('Error message:', error.message)
     console.error('Error stack:', error.stack)
