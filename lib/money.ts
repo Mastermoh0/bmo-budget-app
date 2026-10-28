@@ -3,6 +3,7 @@ import { Prisma } from '../generated/prisma/client'
 import { prisma } from './db'
 import { AccessError } from './errors'
 import { budgetMonth, calendarDate, cents, decimal, monthTotals, todayLagos } from './money-math'
+import { targetProgress } from './targets'
 
 type Tx = Prisma.TransactionClient
 const kinds = ['INCOME', 'EXPENSE', 'TRANSFER', 'REFUND'] as const
@@ -10,13 +11,18 @@ type PostingKind = typeof kinds[number] | 'OPENING'
 type Posting = { kind: PostingKind; date: Date; accountId: string; toAccountId: string | null; categoryId: string | null; amount: string; memo: string }
 type Command =
   | { action: 'account'; name: string; kind: 'BANK' | 'SAVINGS' | 'CASH'; amount: string; date: Date }
-  | { action: 'category'; name: string }
+  | { action: 'category'; name: string; groupId?: string | null }
+  | { action: 'group'; name: string }
+  | { action: 'group-state'; id: string; version: number; name: string; inactive: boolean }
+  | { action: 'reorder'; kind: 'group' | 'category'; id: string; version: number; direction: 'up' | 'down' }
+  | { action: 'set-target'; categoryId: string; version: number; kind: 'MONTHLY' | 'BY_DATE'; amount: string; startMonth: string; dueDate: string | null }
+  | { action: 'remove-target'; categoryId: string; version: number }
   | ({ action: 'post' } & Posting)
   | ({ action: 'edit'; id: string; version: number } & Posting)
   | { action: 'void'; id: string; version: number }
   | { action: 'assign'; month: string; categoryId: string; amount: string; revision: number }
   | { action: 'move'; month: string; categoryId: string; toCategoryId: string; amount: string; revision: number }
-  | { action: 'account-state' | 'category-state'; id: string; version: number; name: string; inactive: boolean }
+  | { action: 'account-state' | 'category-state'; id: string; version: number; name: string; inactive: boolean; groupId?: string | null }
 
 function text(value: unknown, label: string, max = 80) {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > max) throw new AccessError(400, `${label} is required (up to ${max} characters)`)
@@ -54,15 +60,29 @@ function command(body: unknown): { requestId: string; value: Command } {
       if (!['BANK', 'SAVINGS', 'CASH'].includes(data.kind as string)) throw new AccessError(400, 'Choose a bank, savings or cash account')
       return { requestId, value: { action: 'account', name: text(data.name, 'Account name'), kind: data.kind as 'BANK' | 'SAVINGS' | 'CASH', amount: amount(data.amount, true), date: date(data.date) } }
     }
-    case 'category': return { requestId, value: { action: 'category', name: text(data.name, 'Category name') } }
+    case 'category': return { requestId, value: { action: 'category', name: text(data.name, 'Category name'), ...(data.groupId !== undefined ? { groupId: data.groupId === null || data.groupId === '' ? null : text(data.groupId, 'Category group') } : {}) } }
+    case 'group': return { requestId, value: { action: 'group', name: text(data.name, 'Group name') } }
+    case 'reorder': {
+      if (!['group', 'category'].includes(data.kind as string) || !['up', 'down'].includes(data.direction as string)) throw new AccessError(400, 'Choose an item and move it up or down')
+      return { requestId, value: { action: 'reorder', kind: data.kind as 'group' | 'category', id: text(data.id, 'Item'), version: integer(data.version), direction: data.direction as 'up' | 'down' } }
+    }
+    case 'set-target': {
+      if (data.kind !== 'MONTHLY' && data.kind !== 'BY_DATE') throw new AccessError(400, 'Choose a monthly or date-based target')
+      const startMonth = budgetMonth(data.startMonth)
+      const dueDate = data.kind === 'BY_DATE' ? calendarDate(data.dueDate).toISOString().slice(0, 10) : null
+      if (data.kind === 'MONTHLY' && data.dueDate) throw new AccessError(400, 'Monthly targets do not have a final deadline')
+      if (dueDate && dueDate < `${startMonth}-01`) throw new AccessError(400, 'The deadline must be on or after the target start month')
+      return { requestId, value: { action: 'set-target', categoryId: text(data.categoryId, 'Category'), version: integer(data.version), kind: data.kind, amount: amount(data.amount), startMonth, dueDate } }
+    }
+    case 'remove-target': return { requestId, value: { action: 'remove-target', categoryId: text(data.categoryId, 'Category'), version: integer(data.version) } }
     case 'post': return { requestId, value: { action: 'post', ...posting(data) } }
     case 'edit': return { requestId, value: { action: 'edit', id: text(data.id, 'Transaction'), version: integer(data.version), ...posting(data, true) } }
     case 'void': return { requestId, value: { action: 'void', id: text(data.id, 'Transaction'), version: integer(data.version) } }
     case 'assign': return { requestId, value: { action: 'assign', month: budgetMonth(data.month), categoryId: text(data.categoryId, 'Category'), amount: amount(data.amount, false, true), revision: integer(data.revision) } }
     case 'move': return { requestId, value: { action: 'move', month: budgetMonth(data.month), categoryId: text(data.categoryId, 'Source category'), toCategoryId: text(data.toCategoryId, 'Destination category'), amount: amount(data.amount), revision: integer(data.revision) } }
-    case 'account-state': case 'category-state': {
+    case 'account-state': case 'category-state': case 'group-state': {
       if (typeof data.inactive !== 'boolean') throw new AccessError(400, 'Choose whether to close or reopen this record')
-      return { requestId, value: { action: data.action, id: text(data.id, 'Record'), version: integer(data.version), name: text(data.name, 'Name'), inactive: data.inactive } }
+      return { requestId, value: { action: data.action, id: text(data.id, 'Record'), version: integer(data.version), name: text(data.name, 'Name'), inactive: data.inactive, ...(data.action === 'category-state' && data.groupId !== undefined ? { groupId: data.groupId === null || data.groupId === '' ? null : text(data.groupId, 'Category group') } : {}) } }
     }
     default: throw new AccessError(400, 'This financial action is not supported')
   }
@@ -84,6 +104,11 @@ async function account(tx: Tx, budgetId: string, id: string) {
 async function category(tx: Tx, budgetId: string, id: string, allowArchived = false) {
   const saved = await tx.budgetCategory.findFirst({ where: { budgetId, id } })
   if (!saved || (!allowArchived && saved.archivedAt)) throw new AccessError(400, 'Choose an active category in this budget')
+  return saved
+}
+async function group(tx: Tx, budgetId: string, id: string) {
+  const saved = await tx.categoryGroup.findFirst({ where: { budgetId, id, archivedAt: null } })
+  if (!saved) throw new AccessError(400, 'Choose an active group in this budget, or leave the category ungrouped')
   return saved
 }
 async function validatePosting(tx: Tx, budgetId: string, data: Posting, oldCategory?: string | null) {
@@ -136,8 +161,54 @@ export async function applyMoney(userId: string, budgetId: string, body: unknown
           const transaction = await tx.moneyTransaction.create({ data: { budgetId, kind: 'OPENING', date: value.date, memo: opening.memo, entries: { create: entries(opening) } } })
           result = { id: saved.id, transactionId: transaction.id, version: saved.version }; after = record({ ...saved, opening: value.amount })
         } else if (value.action === 'category') {
-          const saved = await tx.budgetCategory.create({ data: { budgetId, name: value.name } })
+          if (value.groupId) await group(tx, budgetId, value.groupId)
+          const last = await tx.budgetCategory.aggregate({ where: { budgetId, groupId: value.groupId ?? null }, _max: { sortOrder: true } })
+          const saved = await tx.budgetCategory.create({ data: { budgetId, name: value.name, groupId: value.groupId ?? null, sortOrder: (last._max.sortOrder ?? -1) + 1 } })
           result = { id: saved.id, version: saved.version }; after = record(saved)
+        } else if (value.action === 'group') {
+          const last = await tx.categoryGroup.aggregate({ where: { budgetId }, _max: { sortOrder: true } })
+          const saved = await tx.categoryGroup.create({ data: { budgetId, name: value.name, sortOrder: (last._max.sortOrder ?? -1) + 1 } })
+          result = { id: saved.id, version: saved.version }; after = record(saved)
+        } else if (value.action === 'group-state') {
+          const saved = await tx.categoryGroup.findFirst({ where: { budgetId, id: value.id } })
+          if (!saved) throw new AccessError(404, 'Group not found')
+          if (saved.version !== value.version) throw new AccessError(409, 'This group changed. Refresh before trying again.')
+          if (value.inactive && await tx.budgetCategory.count({ where: { budgetId, groupId: saved.id, archivedAt: null } })) throw new AccessError(400, 'Move or archive the active categories before archiving this group')
+          const updated = await tx.categoryGroup.update({ where: { id: saved.id }, data: { name: value.name, archivedAt: value.inactive ? new Date() : null, version: { increment: 1 } } })
+          before = record(saved); after = record(updated); result = { id: updated.id, version: updated.version }
+        } else if (value.action === 'reorder') {
+          const categoryItem = value.kind === 'category' ? await category(tx, budgetId, value.id) : null
+          const current = categoryItem ?? await group(tx, budgetId, value.id)
+          if (current.version !== value.version) throw new AccessError(409, 'This item changed. Refresh before moving it.')
+          const orderBy = [{ sortOrder: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }] as const
+          const siblings = value.kind === 'group'
+            ? await tx.categoryGroup.findMany({ where: { budgetId, archivedAt: null }, orderBy: [...orderBy] })
+            : await tx.budgetCategory.findMany({ where: { budgetId, groupId: categoryItem!.groupId, archivedAt: null }, orderBy: [...orderBy] })
+          const index = siblings.findIndex(row => row.id === value.id), destination = index + (value.direction === 'up' ? -1 : 1)
+          if (!siblings[destination]) throw new AccessError(400, 'This item is already at the end of the list')
+          before = record(siblings)
+          ;[siblings[index], siblings[destination]] = [siblings[destination], siblings[index]]
+          for (const [sortOrder, row] of siblings.entries()) {
+            if (row.sortOrder === sortOrder && row.id !== value.id && sortOrder !== index) continue
+            if (value.kind === 'group') await tx.categoryGroup.update({ where: { id: row.id }, data: { sortOrder, version: { increment: 1 } } })
+            else await tx.budgetCategory.update({ where: { id: row.id }, data: { sortOrder, version: { increment: 1 } } })
+          }
+          after = record(siblings.map((row, sortOrder) => ({ id: row.id, name: row.name, sortOrder }))); result = { id: value.id }
+        } else if (value.action === 'set-target' || value.action === 'remove-target') {
+          await category(tx, budgetId, value.categoryId, value.action === 'remove-target')
+          const key = { budgetId_categoryId: { budgetId, categoryId: value.categoryId } }
+          const saved = await tx.categoryTarget.findUnique({ where: key })
+          if ((saved?.version ?? 0) !== value.version) throw new AccessError(409, 'This target changed. Refresh before saving it.')
+          before = saved ? record(saved) : undefined
+          if (value.action === 'remove-target') {
+            if (!saved || saved.removedAt) throw new AccessError(400, 'This category has no active target')
+            const updated = await tx.categoryTarget.update({ where: key, data: { removedAt: new Date(), version: { increment: 1 } } })
+            after = record(updated); result = { id: updated.id, version: updated.version }
+          } else {
+            const details = { kind: value.kind, amount: value.amount, startMonth: calendarDate(`${value.startMonth}-01`), dueDate: value.dueDate ? calendarDate(value.dueDate) : null, removedAt: null }
+            const updated = await tx.categoryTarget.upsert({ where: key, create: { budgetId, categoryId: value.categoryId, ...details }, update: { ...details, version: { increment: 1 } } })
+            after = record(updated); result = { id: updated.id, version: updated.version }
+          }
         } else if (value.action === 'post') {
           await validatePosting(tx, budgetId, value)
           const saved = await tx.moneyTransaction.create({ data: { budgetId, kind: value.kind, date: value.date, memo: value.memo, categoryId: value.categoryId, entries: { create: entries(value) } }, include: { entries: true } })
@@ -191,7 +262,14 @@ export async function applyMoney(userId: string, budgetId: string, body: unknown
           const saved = await tx.budgetCategory.findFirst({ where: { budgetId, id: value.id } })
           if (!saved) throw new AccessError(404, 'Category not found')
           if (saved.version !== value.version) throw new AccessError(409, 'This category changed. Refresh before trying again.')
-          const updated = await tx.budgetCategory.update({ where: { id: saved.id }, data: { name: value.name, archivedAt: value.inactive ? new Date() : null, version: { increment: 1 } } })
+          const groupId = value.groupId === undefined ? saved.groupId : value.groupId
+          if (groupId && (!value.inactive || groupId !== saved.groupId)) await group(tx, budgetId, groupId)
+          let sortOrder = saved.sortOrder
+          if (groupId !== saved.groupId) {
+            const last = await tx.budgetCategory.aggregate({ where: { budgetId, groupId }, _max: { sortOrder: true } })
+            sortOrder = (last._max.sortOrder ?? -1) + 1
+          }
+          const updated = await tx.budgetCategory.update({ where: { id: saved.id }, data: { name: value.name, groupId, sortOrder, archivedAt: value.inactive ? new Date() : null, version: { increment: 1 } } })
           before = record(saved); after = record(updated); result = { id: updated.id, version: updated.version }
         }
         const revision = budget.moneyRevision + 1
@@ -210,6 +288,7 @@ export async function applyMoney(userId: string, budgetId: string, body: unknown
 
 export async function moneySnapshot(userId: string, budgetId: string, selectedMonth: string, page = 1) {
   const month = budgetMonth(selectedMonth)
+  const today = todayLagos()
   if (!Number.isInteger(page) || page < 1 || page > 10000) throw new AccessError(400, 'Choose a valid transaction page')
   return prisma.$transaction(async tx => {
     const budget = await permission(tx, budgetId, userId)
@@ -217,22 +296,29 @@ export async function moneySnapshot(userId: string, budgetId: string, selectedMo
     const totals = monthTotals(month, data.assignments, data.activity, data.inflows)
     const start = calendarDate(`${month}-01`), end = new Date(start)
     end.setUTCMonth(end.getUTCMonth() + 1)
-    const [accounts, categories, balances, transactions, activity, report] = await Promise.all([
+    const [accounts, categories, balances, transactions, activity, report, groups] = await Promise.all([
       tx.moneyAccount.findMany({ where: { budgetId }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] }),
-      tx.budgetCategory.findMany({ where: { budgetId }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] }),
+      tx.budgetCategory.findMany({ where: { budgetId }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }], include: { target: true } }),
       tx.moneyEntry.groupBy({ by: ['accountId'], where: { budgetId, transaction: { voidedAt: null, date: { lt: end } } }, _sum: { amount: true } }),
       tx.moneyTransaction.findMany({ where: { budgetId, date: { gte: start, lt: end } }, orderBy: [{ date: 'desc' }, { id: 'desc' }], skip: (page - 1) * 50, take: 51, include: { entries: { orderBy: { position: 'asc' }, select: { accountId: true, amount: true } } } }),
       tx.moneyOperation.findMany({ where: { budgetId }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 20, select: { id: true, action: true, actorUserId: true, createdAt: true, result: true, before: true, after: true } }),
       tx.$queryRaw<{ kind: string; amount: string }[]>`SELECT t.kind::text AS kind, SUM(e.amount)::text AS amount FROM "MoneyTransaction" t JOIN "MoneyEntry" e ON e."transactionId"=t.id AND e."budgetId"=t."budgetId" WHERE t."budgetId"=${budgetId} AND t."voidedAt" IS NULL AND t.date >= ${start} AND t.date < ${end} GROUP BY 1`,
+      tx.categoryGroup.findMany({ where: { budgetId }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }], select: { id: true, name: true, version: true, archivedAt: true } }),
     ])
     const amountFor = (kind: string) => report.find(row => row.kind === kind)?.amount ?? '0.00'
     const rows = transactions.slice(0, 50).map(saved => ({ id: saved.id, kind: saved.kind, date: saved.date.toISOString().slice(0, 10), categoryId: saved.categoryId, memo: saved.memo, version: saved.version, voided: !!saved.voidedAt, accountId: saved.entries[0].accountId, toAccountId: saved.entries[1]?.accountId ?? null, amount: decimal(cents(saved.entries[0].amount.toFixed(2), true) < 0n ? -cents(saved.entries[0].amount.toFixed(2), true) : cents(saved.entries[0].amount.toFixed(2), true)) }))
     const totalBalance = balances.reduce((sum, row) => sum + cents(row._sum.amount?.toFixed(2) ?? '0.00', true), 0n)
     return {
-      budget: { id: budget.id, name: budget.name, role: budget.role, currency: budget.currency, revision: budget.moneyRevision }, month, today: todayLagos(), page, hasNext: transactions.length > 50,
+      budget: { id: budget.id, name: budget.name, role: budget.role, currency: budget.currency, revision: budget.moneyRevision }, month, today, page, hasNext: transactions.length > 50,
       readyToAssign: decimal(totals.readyToAssign), futureAssigned: decimal(totals.futureAssigned), pastOverspending: decimal(totals.pastOverspending), totalBalance: decimal(totalBalance),
       accounts: accounts.map(saved => ({ id: saved.id, name: saved.name, kind: saved.kind, version: saved.version, closed: !!saved.closedAt, balance: balances.find(row => row.accountId === saved.id)?._sum.amount?.toFixed(2) ?? '0.00' })),
-      categories: categories.map(saved => { const values = totals.categories.get(saved.id); return { id: saved.id, name: saved.name, version: saved.version, archived: !!saved.archivedAt, carry: decimal(values?.carry ?? 0n), assigned: decimal(values?.assigned ?? 0n), activity: decimal(values?.activity ?? 0n), available: decimal(values?.available ?? 0n) } }),
+      groups: groups.map(saved => ({ id: saved.id, name: saved.name, version: saved.version, archived: !!saved.archivedAt })),
+      categories: categories.map(saved => {
+        const values = totals.categories.get(saved.id)
+        const assigned = decimal(values?.assigned ?? 0n), available = decimal(values?.available ?? 0n)
+        const target = saved.target ? { id: saved.target.id, kind: saved.target.kind, amount: saved.target.amount.toFixed(2), startMonth: saved.target.startMonth.toISOString().slice(0, 7), dueDate: saved.target.dueDate?.toISOString().slice(0, 10) ?? null, version: saved.target.version, removed: !!saved.target.removedAt } : null
+        return { id: saved.id, groupId: saved.groupId, name: saved.name, version: saved.version, archived: !!saved.archivedAt, carry: decimal(values?.carry ?? 0n), assigned, activity: decimal(values?.activity ?? 0n), available, target: target ? { ...target, ...targetProgress(target, month, assigned, available, today) } : null }
+      }),
       report: { opening: decimal(cents(amountFor('OPENING'), true)), income: decimal(cents(amountFor('INCOME'), true)), expenses: decimal(-cents(amountFor('EXPENSE'), true)), refunds: decimal(cents(amountFor('REFUND'), true)), netSpending: decimal(-cents(amountFor('EXPENSE'), true) - cents(amountFor('REFUND'), true)) },
       transactions: rows, activity: activity.map(row => ({ ...row, createdAt: row.createdAt.toISOString() })),
     }

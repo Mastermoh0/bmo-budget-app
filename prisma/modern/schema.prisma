@@ -117,6 +117,8 @@ model Budget {
   transactions        MoneyTransaction[]
   assignments         BudgetAssignment[]
   moneyOperations     MoneyOperation[]
+  categoryGroups      CategoryGroup[]
+  categoryTargets     CategoryTarget[]
 
   @@unique([ownerUserId, requestId])
   @@index([ownerUserId])
@@ -156,14 +158,57 @@ model BudgetCategory {
   budgetId    String
   budget      Budget             @relation(fields: [budgetId], references: [id], onDelete: Restrict)
   name        String             @db.VarChar(80)
+  groupId     String?
+  group       CategoryGroup?     @relation(fields: [budgetId, groupId], references: [budgetId, id], onDelete: Restrict)
+  sortOrder   Int                @default(0)
   version     Int                @default(1)
   archivedAt  DateTime?
   createdAt   DateTime           @default(now())
   transactions MoneyTransaction[]
   assignments BudgetAssignment[]
+  target      CategoryTarget?
 
   @@unique([budgetId, id])
   @@index([budgetId, createdAt])
+  @@index([budgetId, groupId, sortOrder])
+}
+
+model CategoryGroup {
+  id         String           @id @default(cuid())
+  budgetId   String
+  budget     Budget           @relation(fields: [budgetId], references: [id], onDelete: Restrict)
+  name       String           @db.VarChar(80)
+  sortOrder  Int              @default(0)
+  version    Int              @default(1)
+  archivedAt DateTime?
+  createdAt  DateTime         @default(now())
+  categories BudgetCategory[]
+
+  @@unique([budgetId, id])
+  @@index([budgetId, sortOrder])
+}
+
+enum TargetKind {
+  MONTHLY
+  BY_DATE
+}
+
+model CategoryTarget {
+  id         String         @id @default(cuid())
+  budgetId   String
+  budget     Budget         @relation(fields: [budgetId], references: [id], onDelete: Restrict)
+  categoryId String
+  category   BudgetCategory @relation(fields: [budgetId, categoryId], references: [budgetId, id], onDelete: Restrict)
+  kind       TargetKind
+  amount     Decimal        @db.Decimal(20, 2)
+  startMonth DateTime       @db.Date
+  dueDate    DateTime?      @db.Date
+  version    Int            @default(1)
+  removedAt  DateTime?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@unique([budgetId, categoryId])
 }
 
 model MoneyTransaction {

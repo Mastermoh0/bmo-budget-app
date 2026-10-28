@@ -2,7 +2,7 @@
 
 This isolated development copy implements the approved database/Better Auth milestone. The original Next.js-upgraded app is preserved at `C:\Users\MasterMoh\bmo-budget-app`, checkpoint `7319b0f`. The current branch is `codex/database-auth-foundation`.
 
-The preview supports verified email/password registration, recovery, email/password changes, session management, private-budget setup, current owner/editor/viewer access, financial accounts, category allocations, transactions, monthly reports and CSV export. Sharing invitations, targets, Gmail, chat and redesign remain later milestones. Unported API paths return an explicit unavailable response; the previous source is preserved in `legacy-reference/`, outside the active build. The old Prisma schema/migrations and socket-server source remain reference material.
+The preview supports verified email/password registration, recovery, email/password changes, session management, private-budget setup, current owner/editor/viewer access, financial accounts, category groups/allocations, savings targets, transactions, monthly reports and CSV export. Sharing invitations, Gmail, chat and redesign remain later milestones. Unported API paths return an explicit unavailable response; the previous source is preserved in `legacy-reference/`, outside the active build. The old Prisma schema/migrations and socket-server source remain reference material.
 
 ## Run locally
 
@@ -43,6 +43,21 @@ Browser evidence and the walkthrough recording are stored outside the repository
 `npm run build` generates the client and build assets without changing database tables. `npm run db:deploy` validates the declared target and applies reviewed migrations. `npm run db:migrate -- --name bimo_description` creates the next development migration after validation. All Prisma commands use `prisma.config.ts` and `prisma/modern/`; never run reset or `db push` against the old schema. Database target guards reject `budget_app` and mismatched targets.
 
 `npm run mail:retry` processes up to ten due welcome messages (at most three send attempts per event) and prunes expired auth session/rate-limit rows. A sender interrupted after claiming a message leaves `SENDING` for review rather than automatically risking a duplicate; external SMTP cannot promise exactly-once delivery across a process crash.
+
+## Category groups and savings targets
+
+Groups on the Budget page support creation, renaming, reordering, category placement/moves and safe archival/reopening. Existing categories remain ungrouped until explicitly moved. Group totals include archived financial records. Active categories must be moved or archived before their group can be archived; no grouping action changes money. Category choices include group labels, and active categories can be reordered within their group.
+
+The Targets page supports one current planning target per category:
+
+- Monthly contribution: track the net amount assigned in each selected month from the start month onward. Carryover, spending and refunds do not count as fresh contributions. Returning/moving allocations out reduces monthly progress. Each month starts a new contribution period.
+- Save by date: track current positive category availability against an amount and deadline. Carryover counts, spending reduces progress and refunds restore it. Suggested extra funding divides the remaining amount across months through the deadline, including the selected month, rounding up to a kobo.
+- Negative availability or negative monthly net assignment is included in the amount still needed. Displayed progress stays at zero while a negative balance is being covered; the explanation identifies that shortfall.
+- Targets never allocate money or create account entries. Edits change the current planning guidance from its start month; previous definitions remain in the operation history rather than separate historical goal snapshots. Removal keeps the target row, audit records and all money. A removed target can be set again with its current version.
+
+Owners/editors can manage groups and targets; viewers read them. Every mutation uses the existing budget lock, current permission check, stale-version check and request-key journal. Migration `20261028082654_bimo_groups_targets` is additive and preserves all financial entries. It enforces budget-scoped group/category links, positive exact target amounts and valid target date/type shapes.
+
+Recorded browser evidence: `C:\Users\MasterMoh\.codex\visualizations\2026\10\25\01a173e9-b493-7902-9acb-c6ccae4374e8\groups-targets-2026-10-28\evidence.md`. The shared master plan records the milestone and links the screenshots/recordings.
 
 ## Credentials and hosted checks deferred by the user
 

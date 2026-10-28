@@ -1362,3 +1362,76 @@ Evidence: `C:\Users\MasterMoh\.codex\visualizations\2026\10\25\01a173e9-b493-790
 This is a local correctness increment. Real Google OAuth/Neon/free transactional sending and hosting remain explicitly postponed. No external service, domain, paid plan or public deployment was created. Hosted latency/capacity, backup/restore rehearsal, complete security/privacy/release review and real provider delivery are not established by local tests.
 
 Next follow the existing roadmap: household invitations/administration and remaining desktop product flows (including targets, category grouping and the guided first-use tutorial), then optional Gmail reviewed drafts and approved visual integration at their planned stages. The Canvas/Night Desk design, separate mobile composition, Gmail consent/parsers, Sentry and later AI work have not been silently enabled or removed. Advanced credit/loan/investment workflows, splits, recurring transactions, multi-currency and negative opening balances remain deferred. Tests cover the defined core contract; they are not an exhaustive YNAB parity or all-browser/accessibility certification.
+
+## 34. Category groups and savings targets — implemented, recorded and verified
+
+Recorded 28 October 2026 after the user approved the next concrete task and requested recordings, screenshots and an update to this main file. **Category groups and the two supported savings-target types now work in the local development version.** This completes this part of stage 4; the rest of the desktop release remains on the roadmap. Section 33's reference to groups/targets as future work is historical and is superseded here.
+
+Implementation: `C:\Users\MasterMoh\Documents\Codex\bimo-database-auth`, branch `codex/database-auth-foundation`, based on money-engine checkpoint `61540a3`. The authoritative shared plan remains this file; the development checkout receives a synchronized reference copy. Preview: [Open Bimo](http://localhost:3100/).
+
+### What was added and how it works
+
+1. **Organize categories.** Create and rename groups, move groups up/down, place new/existing categories into groups or back into Ungrouped, and reorder active categories within a group. Existing records stay ungrouped until explicitly moved. The worksheet shows exact group totals for carry, assignments, activity and availability; category choices identify their groups. Grouping changes organization, never bank money or allocations.
+2. **Archive safely.** A group with active categories cannot be archived: move/archive those categories first. Empty groups can be archived and reopened. Archived category/group financial records remain included in totals. An archived category retains its target and progress, with target editing unavailable until reactivated; removing the planning target still preserves money/history.
+3. **Monthly contribution targets.** From the chosen start month, track that month's net assigned amount. Carryover, spending and refunds do not count as fresh monthly contributions. Returning or moving money out reduces net contribution progress. The next month begins a new contribution period; it does not erase carried category money.
+4. **Save-by-date targets.** Track the category's current availability against the chosen amount/deadline. Carryover counts; spending lowers progress; refunds and assignments restore it. Suggested extra monthly funding divides the remaining requirement through the deadline, including the selected month, and rounds upward to a kobo. Incomplete goals show a past-deadline state when appropriate; future-start goals show Not started.
+5. **Include shortfalls.** When availability is negative, a date target includes the overspending as well as the goal in its funding requirement. Monthly targets similarly account for a negative net assignment after money is returned. Progress bars stay between 0% and 100%; the displayed remaining amount and explanation retain the full shortfall. For example, a 10,000 target with availability −500 needs 10,500, not 10,000.
+6. **Keep targets as guidance.** Saving, editing, removing or recreating a target never allocates money or creates account entries. Use the existing Budget page to assign money. Each category has one current target definition. Editing changes the current guidance from its start month; older definitions remain in before/after operation history, rather than separate monthly goal-definition snapshots. Removal retains the target row and audit history; recreation uses its current version.
+7. **Use the same access and save protections.** Owners/editors can manage groups/targets; viewers only read them. The shared service checks current budget access inside the budget lock, validates inputs and budget-scoped references, checks versions, and journals the request/fingerprint/result with the change. Stale changes and conflicting request reuse fail. Removed members cannot keep using groups/targets through an existing login.
+
+### Data and implementation changes
+
+- Additive migration `prisma/modern/migrations/20261028082654_bimo_groups_targets/migration.sql` adds `CategoryGroup` and `CategoryTarget`, plus nullable group placement and ordering on existing categories. It preserves accounts, transactions, entries, assignments, existing categories and earlier migration history. It was reviewed and deployed to the separate modern local development/test databases, followed by a no-op second deployment in the test runner.
+- Compound foreign keys prevent attaching another budget's group/category. Database checks enforce nonnegative ordering, positive target amounts/versions, first-of-month starts and valid monthly/date deadline shapes. Exact target amounts use `Decimal(20,2)`; derived progress and funding use integer-kobo calculations. Only the bounded progress percentage and calendar month count use JavaScript numbers.
+- Added a Targets route, grouped worksheet/controls, target cards/forms and progress links from the worksheet. Shared financial forms retain safe POST/hydration behaviour, original-payload retry protection and save/refresh transitions. No new runtime dependency, dependency declaration or lockfile change was needed.
+- Existing account/transaction/report flows continue using the same ledger. Group/target audit events retain their actor and previous/resulting settings. Activity renders target amount, start, deadline and removal information.
+
+### Tests, browser walkthrough and independent reconciliation
+
+**Final result: 37 tests passed, zero failed.** Production build, lint and nonincremental TypeScript checks passed. The integration suite covers the existing auth/money flows plus placement/reordering, archival guards, target progress/reset, refunds/historical correction, negative funding requirements, version conflicts, cross-instance retries, validation, origin checks, viewer/editor/removal and direct foreign-reference rejection. Test processes use the isolated `bimo_modern_test` database and stop afterward.
+
+The browser performed fresh signup, captured local verification and short setup; created groups/categories/accounts; set both target types and a future-start target; assigned money; completed a monthly goal; recorded expenses/refunds; changed months/deadlines; removed/recreated a target; moved/reordered/archived/reopened groups/categories; downloaded CSV; inspected change history; and signed out/in. Separate viewer/editor sessions proved read-only controls, denied writes, permitted target edits, removal denial and preserved owner access. The temporary membership was removed afterward. These are synthetic membership fixtures, not a completed invitation interface.
+
+The browser also deliberately lost a response after committing a 7,000 target. Retrying after typing 9,000 applied the original 7,000 request once; an independent query confirmed one 7,000 change and no 9,000 change. The goal was explicitly restored to 6,000 afterward. Invalid zero targets were visibly rejected. Browser checks found and corrected overly permissive client amount-pattern escaping; the server had already rejected malformed values. Final checks reject exponent/letter/excess-precision inputs while accepting plain decimals.
+
+The final overspending rehearsal temporarily spent an extra 4,000, producing −500 availability. The date target correctly requested 10,500, with a 2,625 monthly suggestion across four months. That test expense was voided through the app, preserving its history. Final browser values and independently grouped database entries/assignments/activity agree:
+
+| Final synthetic walkthrough value | Result |
+|---|---:|
+| Everyday account balance | NGN 26,500.00 |
+| Net spending | NGN 3,500.00 |
+| Ready to assign | NGN 20,000.00 |
+| Groceries assigned / available | NGN 6,000.00 / 3,000.00 |
+| Groceries monthly target progress | 6,000 of 6,000; target met |
+| Emergency fund available / goal | NGN 3,500.00 / 10,000.00 |
+| Emergency funding remaining / October monthly suggestion | NGN 6,500.00 / 1,625.00 |
+| November monthly contribution progress | NGN 0.00; carried money retained |
+| Emergency monthly suggestion in November | NGN 2,166.67; rounded up exactly |
+| Financial entries after all group/target operations | 5 total, including the voided temporary expense; target changes created none |
+
+The prior section 33 walkthrough was also rechecked after migration: Everyday 50,000, Savings 12,000, total 62,000, spending 3,000 and the same allocations remained unchanged. Preservation checks again confirmed 156 original application/configuration files unchanged, 109 archived source files and the legacy Prisma schema/migrations preserved. Forty-one public build assets were checked for configured local secrets; none were found. No uncaught page errors or password-bearing URLs appeared in the monitored browser journey. Expected rejected-request and deliberately aborted-response network errors are recorded test cases, not a claim of an empty console.
+
+### Recordings and all screenshots
+
+Everything for this milestone is stored in `C:\Users\MasterMoh\.codex\visualizations\2026\10\25\01a173e9-b493-7902-9acb-c6ccae4374e8\groups-targets-2026-10-28`.
+
+- [Full evidence index — all 37 screenshots, scenarios and results](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/groups-targets-2026-10-28/evidence.md)
+- [Main setup, groups and targets walkthrough recording](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/groups-targets-2026-10-28/groups-targets-walkthrough.webm)
+- [Separate viewer/editor/removal recording](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/groups-targets-2026-10-28/permissions-walkthrough.webm)
+- [Overspending and final reconciliation recording](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/groups-targets-2026-10-28/target-shortfall-verification.webm)
+- [Independent database reconciliation](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/groups-targets-2026-10-28/browser-database-reconciliation.json)
+- [Final automated test output](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/groups-targets-2026-10-28/integration.log)
+
+Final target view:
+
+![Bimo savings targets after final verification](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/groups-targets-2026-10-28/35-final-targets-after-reconciliation.png)
+
+Final grouped budget:
+
+![Bimo grouped budget after final verification](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/groups-targets-2026-10-28/36-final-grouped-budget-after-reconciliation.png)
+
+### What remains next
+
+Continue stage 4 with transaction search/account/category/date filters, shared category/group notes and the remaining agreed desktop report/export/selection controls. Then follow stages 5–7 for household invitations/administration, optional Gmail reviewed drafts and the finished Canvas/Night Desk desktop experience/tutorial. Category groups and savings targets are now completed locally, not future work to redo.
+
+Real Google OAuth, Neon, essential real email, public hosting, restore rehearsal and hosted performance/capacity remain pending as agreed. No paid plan, new cloud resource, real-recipient email or public deployment was created. These functional desktop checks do not establish complete accessibility/all-browser coverage, full security certification, a finished redesign or first-public-release readiness.
