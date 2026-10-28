@@ -1305,3 +1305,60 @@ Evidence directory: `C:\Users\MasterMoh\.codex\visualizations\2026\10\25\01a173e
 The user postponed Google/Neon setup explicitly. Keep real Google sign-in/linking/provider publication, an identified Neon Free development target, real free email delivery, Vercel deployment, hosted pool/reconnect behavior, Nigerian latency and capacity measurements pending. The current auth base URL and SMTP transport are deliberately local-only. Do not treat local callback/inbox tests or a fixture Google account as hosted/provider verification.
 
 The next implementation milestone is stage 3: introduce the reviewed financial account/category/transaction/entry/assignment/operation/audit tables together with exact, authorized financial operations and tests. Continue in `C:\Users\MasterMoh\Documents\Codex\bimo-database-auth`. Prove the section 22 income/expense/transfer scenario and retry/rollback/permission cases before enabling money entry. Full household invitations/administration, tutorial, Gmail drafts, visual integration and the separate mobile composition remain in their agreed later stages. No useful first-release feature was silently dropped by isolating this foundation.
+
+## 33. Local money engine and browser verification
+
+Recorded 28 October 2026. The user authorized the next implementation milestone and asked to exercise the application in a browser. **The local money-engine increment is implemented and verified.** This completes the core financial work in stage 3 locally, with functional desktop screens; it does not complete the first public release, provider setup or visual redesign. Continue in `C:\Users\MasterMoh\Documents\Codex\bimo-database-auth`, branch `codex/database-auth-foundation`. Section 32 describes its separate services and credentials.
+
+### Implemented financial behaviour
+
+| Capability | Current result |
+|---|---|
+| Financial records | Additive migration `20261027203144_bimo_money_engine` creates `MoneyAccount`, `BudgetCategory`, `MoneyTransaction`, signed `MoneyEntry`, monthly `BudgetAssignment` and `MoneyOperation`. The operation journal is also the atomic audit record, retaining actor and before/after data. No separate duplicate balance or rollover tables. |
+| Exact amounts | Decimal strings at the API, PostgreSQL `Decimal(20,2)` storage and integer-kobo calculations. Reject malformed, exponential, excessive-precision, negative opening and out-of-range inputs. Valid 18-digit whole amounts retain their kobo. Derived totals can exceed a single-entry limit without floating-point conversion. |
+| Accounts/opening | Bank, savings and cash accounts with nonnegative opening balances, distinct from earned income. Rename, close at an actual zero balance, reopen and preserve history. Real expenses can overdraw an account; that does not turn it into a supported credit-account workflow. |
+| Transactions | Received income, categorized expenses, categorized refunds and two-sided transfers between distinct open accounts in one budget. Fees and transfers to other people are expenses. Cross-budget links and incompatible category/transaction shapes are rejected. Future dated transactions are rejected rather than treated as received cash. |
+| Allocations/months | Assign available money, return it with a negative allocation, and move available money between categories without changing bank balances. Positive availability carries forward. Uncovered negative availability resets the following month and reduces ready to assign once. Future assignments reserve money once. Historical corrections recompute later months from monthly source aggregates. |
+| Corrections/history | Keep transaction identity, require its current version, atomically replace effective entries, retain before/after records and permit voiding without deleting financial history. Opening balances are corrected rather than voided or moved to another account. Closed accounts must be reopened before historical corrections. Category archival retains allocations, activity and availability. |
+| Authorization | Current owner/editor/viewer membership is checked inside financial transactions. All financial writers lock the budget before checking permission or money. Viewers cannot mutate finances; removed members lose future page/API access. Compound budget foreign keys reject foreign accounts/categories even if application validation is bypassed. Invitations and membership administration screens remain a later milestone. |
+| Safe saves | Operation UUID/fingerprint and result are committed with the money change. Same-request retries return the stored result; conflicting reuse fails. Transaction versions and budget allocation revisions reject stale changes. A failed transfer saves neither side, operation nor budget revision. |
+| Desktop flows | Budget, Accounts, Transactions, Reports and Activity pages. Date/month controls, explanatory validation, current balances, category carry/assigned/activity/available values, explicit overspending, corrections and voids. Submit controls wait for hydration and keep an unconfirmed request's original payload/key on retry. Save transitions wait for refreshed server data before the next correction. |
+| Reports/export | Month report separates openings, received income, expenses, refunds and net spending; transfers and voids do not inflate spending. Transactions are paged at 50 records. Month CSV includes explicit active/voided status, exact amounts and spreadsheet-formula escaping, with a visible 10,000-record limit. Activity displays the latest 20 operations; the complete operation history remains stored. |
+
+PostgreSQL deferred constraint triggers verify completed entry count, signs, distinct accounts and conservation at commit, including corrected transfers. The additive migration also enforces category/type compatibility, entry positions and first-of-month assignment dates. [PostgreSQL constraint-trigger documentation](https://www.postgresql.org/docs/17/sql-createtrigger.html). The migration was reviewed before deployment to the modern development/test databases; legacy schema/history/database were not migrated or reset.
+
+### Verified reference result
+
+The browser created Everyday 50,000 and Savings 10,000, recorded income 5,000, spent 3,000 from Groceries and moved 2,000 from Everyday to Savings. Final browser **and independently grouped database entries** agree:
+
+| Item | NGN |
+|---|---:|
+| Everyday | 50,000.00 |
+| Savings | 12,000.00 |
+| Closed zero-balance test cash account | 0.00 |
+| Combined account balance | 62,000.00 |
+| Net spending | 3,000.00 |
+| Groceries available after assigning 5,000 | 2,000.00 |
+| Additional Transport allocation available | 2,000.00 |
+| Ready to assign after both allocations | 58,000.00 |
+
+The synthetic walkthrough retains correction/void history. Test entries were reversed with the application, not removed from history. The temporary synthetic household membership was removed after permission testing. These are development fixtures, not production seed data.
+
+### Checks and evidence
+
+- Final production build, type checking and lint passed. No application dependency declarations or lockfiles were changed for this milestone.
+- `npm test` passes **29 reported tests**, including the existing auth journey, the section 22 money examples, large exact amounts, cross-instance concurrent retries, stale edits/allocations, refunds, rollover, backdated changes, closure/archive rules, malformed/foreign inputs, permissions, paged reads and CSV formula escaping. Test instances use ports 3110/3111 and the separate `bimo_modern_test` database; owned test processes stop afterward.
+- A test-only database trigger failed the second transfer entry through the real HTTP handler. Neither balance, transaction, completed operation nor revision changed. Direct malformed transfer and foreign-account writes were also rejected by database constraints. No production fault-injection switch was added.
+- Playwright CLI used a dedicated local browser session after the user clarified “computer use” meant opening the app in a browser. Actual UI flows covered signup, captured local verification, short setup, all five budget pages, account/category creation, assignments/returns/moves, income/expenses/transfers/refunds, corrections/voids, overspending/coverage, rollover, future allocations, zero/nonzero closure, reopening/renaming, category archival, CSV download, activity, account security and logout/returning sign-in.
+- The browser deliberately lost the response after a committed expense. Retrying after changing the visible amount posted the original request exactly once; the result was verified and then voided. Household browser fixtures proved view-only controls/write denial, editor posting/voiding, removed-member page/API denial and preserved owner access. These fixtures test permission enforcement; they do not claim an invitation UI exists.
+- Final database reconciliation caught a rapid-correction/refresh timing problem that combined-balance checks alone missed. Financial forms now use a React transition around completion/refresh. A retained browser regression check slows server-component refresh by 700 ms and immediately corrects the transfer 2,000 → 1,500 → 2,000. The intended amounts, displayed per-account results and independently queried entries agree after the fix. Final tests supersede intermediate harness/implementation failures.
+- The browser reported no uncaught page errors or credential-bearing URLs. Expected rejected-request and deliberately lost-response network errors are test results, not a claim that the browser console was completely empty. Forty public build assets were checked for the configured local secrets; none were found.
+- Preservation checks confirmed 156 original application/configuration files unchanged, 109 archived legacy source files preserved, and the legacy Prisma schema/migrations preserved. The original checkout's shared plan is intentionally updated.
+
+Evidence: `C:\Users\MasterMoh\.codex\visualizations\2026\10\25\01a173e9-b493-7902-9acb-c6ccae4374e8\money-engine-2026-10-28`, including screenshots, `money-walkthrough.webm`, `final-refresh-verification.webm`, browser scenario scripts/logs, final integration/build output, CSV, secret/preservation checks and `browser-database-reconciliation.json`. The original implementation checkpoint remains `6b89e59`; this increment is saved separately on the same development branch. Run the preview at `http://localhost:3100`; never run development and production-build commands concurrently against the same `.next` directory.
+
+### Scope still pending
+
+This is a local correctness increment. Real Google OAuth/Neon/free transactional sending and hosting remain explicitly postponed. No external service, domain, paid plan or public deployment was created. Hosted latency/capacity, backup/restore rehearsal, complete security/privacy/release review and real provider delivery are not established by local tests.
+
+Next follow the existing roadmap: household invitations/administration and remaining desktop product flows (including targets, category grouping and the guided first-use tutorial), then optional Gmail reviewed drafts and approved visual integration at their planned stages. The Canvas/Night Desk design, separate mobile composition, Gmail consent/parsers, Sentry and later AI work have not been silently enabled or removed. Advanced credit/loan/investment workflows, splits, recurring transactions, multi-currency and negative opening balances remain deferred. Tests cover the defined core contract; they are not an exhaustive YNAB parity or all-browser/accessibility certification.

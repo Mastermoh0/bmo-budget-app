@@ -1,8 +1,8 @@
-# Bimo authentication and private-budget foundation
+# Bimo local budgeting preview
 
 This isolated development copy implements the approved database/Better Auth milestone. The original Next.js-upgraded app is preserved at `C:\Users\MasterMoh\bmo-budget-app`, checkpoint `7319b0f`. The current branch is `codex/database-auth-foundation`.
 
-The preview supports verified email/password registration, recovery, email/password changes, session management, private-budget setup and current owner/editor/viewer access. Financial entry, reports, sharing invitations, Gmail, chat and redesign are later milestones. Unported API paths return an explicit unavailable response; the previous source is preserved in `legacy-reference/`, outside the active build. The old Prisma schema/migrations and socket-server source remain reference material.
+The preview supports verified email/password registration, recovery, email/password changes, session management, private-budget setup, current owner/editor/viewer access, financial accounts, category allocations, transactions, monthly reports and CSV export. Sharing invitations, targets, Gmail, chat and redesign remain later milestones. Unported API paths return an explicit unavailable response; the previous source is preserved in `legacy-reference/`, outside the active build. The old Prisma schema/migrations and socket-server source remain reference material.
 
 ## Run locally
 
@@ -27,7 +27,18 @@ npm run build
 npm test
 ```
 
-Tests require the local services. `npm test` applies the modern migrations to `bimo_modern_test`, checks a second deployment is a no-op, launches two temporary production instances on ports 3110/3111, tests the complete auth/permission/retry/revocation flows and stops those processes afterward. Only synthetic test records are added; the old database is never a test target.
+Tests require the local services. `npm test` applies the modern migrations to `bimo_modern_test`, checks a second deployment is a no-op, launches two temporary production instances on ports 3110/3111, tests auth, permissions, exact money, retries, rollback and month rules, and stops those processes afterward. Only synthetic test records are added; the old database is never a test target. Stop `npm run dev` before building/testing because both use `.next`; restart it afterward, or use `npm run start` to inspect the verified production build.
+
+## Money rules in this increment
+
+- Open bank/savings/cash accounts with nonnegative opening balances. Record income, categorized expenses/refunds and transfers between two open accounts in the same budget. Fees and payments to other people are separate expenses. Credit, splits, scheduled transactions and currencies besides NGN remain deferred.
+- Amounts cross the API as plain decimal strings. PostgreSQL stores exact `Decimal(20,2)` entries; calculations use integer kobo. Balances come from nonvoided entries, never an editable balance field. The database checks transfer conservation and account/category budget boundaries.
+- Assign or return category money for a selected month and move available money between categories. Positive availability carries; a negative category resets next month and reduces ready to assign once. Future allocations reserve funds without changing bank balances. Only already received transactions can be posted; future dated transactions are rejected.
+- Corrections keep transaction identity and before/after history. Void an incorrect transaction to reverse its money effect without deleting it. Opening balances can be corrected but cannot be voided or moved to another account. Reopen closed accounts before historical edits. Nonzero accounts cannot close; archived categories retain their money/history.
+- Every save uses an operation key/fingerprint in the same database transaction. Retry an unconfirmed save with its original details/key. Stale corrections and stale allocations return a conflict. All writers lock the selected budget and check its current permission before acting.
+- Transactions are listed 50 per month/page; month CSV includes active and voided records with explicit status and neutralizes spreadsheet formulas. Export is capped at 10,000 records per month and fails visibly above that size. Reports exclude voided records and internal transfers. Activity shows the latest 20 operations; full before/after records are retained in the database.
+
+Browser evidence and the walkthrough recording are stored outside the repository in `C:\Users\MasterMoh\.codex\visualizations\2026\10\25\01a173e9-b493-7902-9acb-c6ccae4374e8\money-engine-2026-10-28`. The current desktop screens are functional verification screens; Canvas/Night Desk visual integration and the separate mobile composition are still planned.
 
 `npm run build` generates the client and build assets without changing database tables. `npm run db:deploy` validates the declared target and applies reviewed migrations. `npm run db:migrate -- --name bimo_description` creates the next development migration after validation. All Prisma commands use `prisma.config.ts` and `prisma/modern/`; never run reset or `db push` against the old schema. Database target guards reject `budget_app` and mismatched targets.
 

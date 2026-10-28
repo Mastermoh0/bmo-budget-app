@@ -111,9 +111,122 @@ model Budget {
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
   archivedAt          DateTime?
+  moneyRevision       Int            @default(0)
+  moneyAccounts       MoneyAccount[]
+  categories          BudgetCategory[]
+  transactions        MoneyTransaction[]
+  assignments         BudgetAssignment[]
+  moneyOperations     MoneyOperation[]
 
   @@unique([ownerUserId, requestId])
   @@index([ownerUserId])
+}
+
+enum MoneyKind {
+  OPENING
+  INCOME
+  EXPENSE
+  TRANSFER
+  REFUND
+}
+
+enum MoneyAccountKind {
+  BANK
+  SAVINGS
+  CASH
+}
+
+model MoneyAccount {
+  id        String           @id @default(cuid())
+  budgetId  String
+  budget    Budget           @relation(fields: [budgetId], references: [id], onDelete: Restrict)
+  name      String           @db.VarChar(80)
+  kind      MoneyAccountKind
+  version   Int              @default(1)
+  closedAt  DateTime?
+  createdAt DateTime         @default(now())
+  entries   MoneyEntry[]
+
+  @@unique([budgetId, id])
+  @@index([budgetId, createdAt])
+}
+
+model BudgetCategory {
+  id          String             @id @default(cuid())
+  budgetId    String
+  budget      Budget             @relation(fields: [budgetId], references: [id], onDelete: Restrict)
+  name        String             @db.VarChar(80)
+  version     Int                @default(1)
+  archivedAt  DateTime?
+  createdAt   DateTime           @default(now())
+  transactions MoneyTransaction[]
+  assignments BudgetAssignment[]
+
+  @@unique([budgetId, id])
+  @@index([budgetId, createdAt])
+}
+
+model MoneyTransaction {
+  id         String          @id @default(cuid())
+  budgetId   String
+  budget     Budget          @relation(fields: [budgetId], references: [id], onDelete: Restrict)
+  kind       MoneyKind
+  date       DateTime        @db.Date
+  categoryId String?
+  category   BudgetCategory? @relation(fields: [budgetId, categoryId], references: [budgetId, id], onDelete: Restrict)
+  memo       String          @default("") @db.VarChar(240)
+  version    Int             @default(1)
+  voidedAt   DateTime?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  entries    MoneyEntry[]
+
+  @@unique([budgetId, id])
+  @@index([budgetId, date, id])
+}
+
+model MoneyEntry {
+  id            String           @id @default(cuid())
+  budgetId      String
+  transactionId String
+  transaction   MoneyTransaction @relation(fields: [budgetId, transactionId], references: [budgetId, id], onDelete: Restrict)
+  accountId     String
+  account       MoneyAccount     @relation(fields: [budgetId, accountId], references: [budgetId, id], onDelete: Restrict)
+  position      Int
+  amount        Decimal          @db.Decimal(20, 2)
+
+  @@unique([transactionId, position])
+  @@index([budgetId, accountId, transactionId])
+}
+
+model BudgetAssignment {
+  id         String         @id @default(cuid())
+  budgetId   String
+  budget     Budget         @relation(fields: [budgetId], references: [id], onDelete: Restrict)
+  categoryId String
+  category   BudgetCategory @relation(fields: [budgetId, categoryId], references: [budgetId, id], onDelete: Restrict)
+  month      DateTime       @db.Date
+  amount     Decimal        @db.Decimal(20, 2)
+
+  @@unique([budgetId, categoryId, month])
+  @@index([budgetId, month])
+}
+
+model MoneyOperation {
+  id          String   @id @default(cuid())
+  budgetId    String
+  budget      Budget   @relation(fields: [budgetId], references: [id], onDelete: Restrict)
+  actorUserId String
+  requestId   String   @db.Uuid
+  action      String   @db.VarChar(32)
+  fingerprint String
+  result      Json
+  before      Json?
+  after       Json?
+  createdAt   DateTime @default(now())
+
+  @@unique([budgetId, requestId])
+  @@index([budgetId, createdAt, id])
 }
 
 model BudgetMember {
