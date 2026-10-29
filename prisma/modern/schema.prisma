@@ -104,6 +104,7 @@ model Budget {
   currency            String         @default("NGN") @db.Char(3)
   timezone            String         @default("Africa/Lagos") @db.VarChar(64)
   ownerUserId         String
+  creatorUserId       String
   owner               User           @relation("BudgetOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
   requestId           String         @db.Uuid
   creationFingerprint String
@@ -119,8 +120,10 @@ model Budget {
   moneyOperations     MoneyOperation[]
   categoryGroups      CategoryGroup[]
   categoryTargets     CategoryTarget[]
+  invitations         BudgetInvitation[]
+  sharingRevision     Int            @default(0)
 
-  @@unique([ownerUserId, requestId])
+  @@unique([creatorUserId, requestId])
   @@index([ownerUserId])
 }
 
@@ -158,6 +161,7 @@ model BudgetCategory {
   budgetId    String
   budget      Budget             @relation(fields: [budgetId], references: [id], onDelete: Restrict)
   name        String             @db.VarChar(80)
+  note        String             @default("") @db.VarChar(1000)
   groupId     String?
   group       CategoryGroup?     @relation(fields: [budgetId, groupId], references: [budgetId, id], onDelete: Restrict)
   sortOrder   Int                @default(0)
@@ -178,6 +182,7 @@ model CategoryGroup {
   budgetId   String
   budget     Budget           @relation(fields: [budgetId], references: [id], onDelete: Restrict)
   name       String           @db.VarChar(80)
+  note       String           @default("") @db.VarChar(1000)
   sortOrder  Int              @default(0)
   version    Int              @default(1)
   archivedAt DateTime?
@@ -220,6 +225,7 @@ model MoneyTransaction {
   categoryId String?
   category   BudgetCategory? @relation(fields: [budgetId, categoryId], references: [budgetId, id], onDelete: Restrict)
   memo       String          @default("") @db.VarChar(240)
+  payee      String          @default("") @db.VarChar(100)
   version    Int             @default(1)
   voidedAt   DateTime?
   createdAt  DateTime        @default(now())
@@ -279,12 +285,32 @@ model BudgetMember {
   budgetId String
   userId   String
   role     MemberRole
+  version  Int        @default(1)
   budget   Budget     @relation(fields: [budgetId], references: [id], onDelete: Restrict)
   user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   joinedAt DateTime   @default(now())
 
   @@unique([budgetId, userId])
   @@index([userId])
+}
+
+model BudgetInvitation {
+  id             String     @id @default(cuid())
+  budgetId       String
+  budget         Budget     @relation(fields: [budgetId], references: [id], onDelete: Restrict)
+  email          String     @db.VarChar(254)
+  role           MemberRole
+  ownership      Boolean    @default(false)
+  tokenHash      String     @unique @db.Char(64)
+  createdById    String
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  acceptedAt     DateTime?
+  acceptedUserId String?
+  delivery       MailStatus @default(PENDING)
+  createdAt      DateTime   @default(now())
+
+  @@index([budgetId, createdAt])
 }
 
 model UserSettings {

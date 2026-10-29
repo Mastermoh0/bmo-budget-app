@@ -4,12 +4,14 @@ import { prisma } from './db'
 import { AccessError } from './errors'
 import { budgetMonth, calendarDate, cents, decimal, monthTotals, todayLagos } from './money-math'
 import { targetProgress } from './targets'
+import { moneyFilters, transactionWhere, reportWhere, type FilterInput } from './money-filters'
 
 type Tx = Prisma.TransactionClient
 const kinds = ['INCOME', 'EXPENSE', 'TRANSFER', 'REFUND'] as const
 type PostingKind = typeof kinds[number] | 'OPENING'
-type Posting = { kind: PostingKind; date: Date; accountId: string; toAccountId: string | null; categoryId: string | null; amount: string; memo: string }
+type Posting = { kind: PostingKind; date: Date; accountId: string; toAccountId: string | null; categoryId: string | null; amount: string; memo: string; payee?: string }
 type Command =
+  | { action: 'note'; kind: 'group' | 'category'; id: string; version: number; note: string }
   | { action: 'account'; name: string; kind: 'BANK' | 'SAVINGS' | 'CASH'; amount: string; date: Date }
   | { action: 'category'; name: string; groupId?: string | null }
   | { action: 'group'; name: string }
@@ -48,7 +50,8 @@ function posting(data: Record<string, unknown>, editing = false): Posting {
   if (!categorized && data.categoryId) throw new AccessError(400, 'Income, opening balances and internal transfers cannot have a spending category')
   if (kind !== 'TRANSFER' && data.toAccountId) throw new AccessError(400, 'Only a transfer can have a destination account')
   if (data.memo !== undefined && (typeof data.memo !== 'string' || data.memo.length > 240)) throw new AccessError(400, 'Keep the note within 240 characters')
-  return { kind, date: date(data.date), accountId: text(data.accountId, 'Account'), toAccountId: kind === 'TRANSFER' ? text(data.toAccountId, 'Destination account') : null, categoryId: categorized ? text(data.categoryId, 'Category') : null, amount: amount(data.amount, kind === 'OPENING'), memo: typeof data.memo === 'string' ? data.memo.trim() : '' }
+  if (data.payee !== undefined && (typeof data.payee !== 'string' || data.payee.length > 100)) throw new AccessError(400, 'Keep the payee within 100 characters')
+  return { kind, date: date(data.date), accountId: text(data.accountId, 'Account'), toAccountId: kind === 'TRANSFER' ? text(data.toAccountId, 'Destination account') : null, categoryId: categorized ? text(data.categoryId, 'Category') : null, amount: amount(data.amount, kind === 'OPENING'), memo: typeof data.memo === 'string' ? data.memo.trim() : '', ...(data.payee !== undefined ? { payee: (data.payee as string).trim() } : {}) }
 }
 function command(body: unknown): { requestId: string; value: Command } {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new AccessError(400, 'Financial details are required')
@@ -56,6 +59,10 @@ function command(body: unknown): { requestId: string; value: Command } {
   const requestId = text(data.requestId, 'Request ID')
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) throw new AccessError(400, 'A valid request ID is required')
   switch (data.action) {
+    case 'note': {
+      if (!['group', 'category'].includes(data.kind as string) || typeof data.note !== 'string' || data.note.length > 1000) throw new AccessError(400, 'Choose a group/category and keep its note within 1,000 characters')
+      return { requestId, value: { action: 'note', kind: data.kind as 'group' | 'category', id: text(data.id, 'Item'), version: integer(data.version), note: data.note.trim() } }
+    }
     case 'account': {
       if (!['BANK', 'SAVINGS', 'CASH'].includes(data.kind as string)) throw new AccessError(400, 'Choose a bank, savings or cash account')
       return { requestId, value: { action: 'account', name: text(data.name, 'Account name'), kind: data.kind as 'BANK' | 'SAVINGS' | 'CASH', amount: amount(data.amount, true), date: date(data.date) } }
@@ -155,7 +162,15 @@ export async function applyMoney(userId: string, budgetId: string, body: unknown
         let result: Prisma.InputJsonValue = {}
         let before: Prisma.InputJsonValue | undefined
         let after: Prisma.InputJsonValue | undefined
-        if (value.action === 'account') {
+        if (value.action === 'note') {
+          const saved = value.kind === 'category' ? await category(tx, budgetId, value.id, true) : await tx.categoryGroup.findFirst({ where: { budgetId, id: value.id } })
+          if (!saved) throw new AccessError(404, 'Note item not found')
+          if (saved.version !== value.version) throw new AccessError(409, 'This item changed. Refresh before saving its note.')
+          const updated = value.kind === 'category'
+            ? await tx.budgetCategory.update({ where: { id: saved.id }, data: { note: value.note, version: { increment: 1 } } })
+            : await tx.categoryGroup.update({ where: { id: saved.id }, data: { note: value.note, version: { increment: 1 } } })
+          before = record(saved); after = record(updated); result = { id: updated.id, version: updated.version }
+        } else if (value.action === 'account') {
           const saved = await tx.moneyAccount.create({ data: { budgetId, name: value.name, kind: value.kind } })
           const opening: Posting = { kind: 'OPENING', accountId: saved.id, toAccountId: null, categoryId: null, amount: value.amount, date: value.date, memo: 'Opening balance' }
           const transaction = await tx.moneyTransaction.create({ data: { budgetId, kind: 'OPENING', date: value.date, memo: opening.memo, entries: { create: entries(opening) } } })
@@ -211,7 +226,7 @@ export async function applyMoney(userId: string, budgetId: string, body: unknown
           }
         } else if (value.action === 'post') {
           await validatePosting(tx, budgetId, value)
-          const saved = await tx.moneyTransaction.create({ data: { budgetId, kind: value.kind, date: value.date, memo: value.memo, categoryId: value.categoryId, entries: { create: entries(value) } }, include: { entries: true } })
+          const saved = await tx.moneyTransaction.create({ data: { budgetId, kind: value.kind, date: value.date, memo: value.memo, payee: value.payee, categoryId: value.categoryId, entries: { create: entries(value) } }, include: { entries: true } })
           result = { id: saved.id, version: saved.version }; after = record(saved)
         } else if (value.action === 'edit' || value.action === 'void') {
           const saved = await tx.moneyTransaction.findFirst({ where: { budgetId, id: value.id }, include: { entries: true } })
@@ -228,7 +243,7 @@ export async function applyMoney(userId: string, budgetId: string, body: unknown
             if (saved.kind === 'OPENING' && saved.entries[0].accountId !== value.accountId) throw new AccessError(400, 'An opening balance belongs to its original account')
             await validatePosting(tx, budgetId, value, saved.categoryId)
             await tx.moneyEntry.deleteMany({ where: { budgetId, transactionId: saved.id } })
-            const updated = await tx.moneyTransaction.update({ where: { id: saved.id }, data: { date: value.date, memo: value.memo, categoryId: value.categoryId, version: { increment: 1 }, entries: { create: entries(value) } }, include: { entries: true } })
+            const updated = await tx.moneyTransaction.update({ where: { id: saved.id }, data: { date: value.date, memo: value.memo, payee: value.payee, categoryId: value.categoryId, version: { increment: 1 }, entries: { create: entries(value) } }, include: { entries: true } })
             after = record(updated); result = { id: updated.id, version: updated.version }
           }
         } else if (value.action === 'assign' || value.action === 'move') {
@@ -286,8 +301,9 @@ export async function applyMoney(userId: string, budgetId: string, body: unknown
   throw new AccessError(409, 'The budget is busy. Retry this same request safely.')
 }
 
-export async function moneySnapshot(userId: string, budgetId: string, selectedMonth: string, page = 1) {
+export async function moneySnapshot(userId: string, budgetId: string, selectedMonth: string, page = 1, input: FilterInput = {}) {
   const month = budgetMonth(selectedMonth)
+  const filters = moneyFilters(month, input)
   const today = todayLagos()
   if (!Number.isInteger(page) || page < 1 || page > 10000) throw new AccessError(400, 'Choose a valid transaction page')
   return prisma.$transaction(async tx => {
@@ -300,26 +316,29 @@ export async function moneySnapshot(userId: string, budgetId: string, selectedMo
       tx.moneyAccount.findMany({ where: { budgetId }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] }),
       tx.budgetCategory.findMany({ where: { budgetId }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }], include: { target: true } }),
       tx.moneyEntry.groupBy({ by: ['accountId'], where: { budgetId, transaction: { voidedAt: null, date: { lt: end } } }, _sum: { amount: true } }),
-      tx.moneyTransaction.findMany({ where: { budgetId, date: { gte: start, lt: end } }, orderBy: [{ date: 'desc' }, { id: 'desc' }], skip: (page - 1) * 50, take: 51, include: { entries: { orderBy: { position: 'asc' }, select: { accountId: true, amount: true } } } }),
+      tx.moneyTransaction.findMany({ where: transactionWhere(budgetId, month, filters), orderBy: [{ date: 'desc' }, { id: 'desc' }], skip: (page - 1) * 50, take: 51, include: { entries: { orderBy: { position: 'asc' }, select: { accountId: true, amount: true } } } }),
       tx.moneyOperation.findMany({ where: { budgetId }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 20, select: { id: true, action: true, actorUserId: true, createdAt: true, result: true, before: true, after: true } }),
       tx.$queryRaw<{ kind: string; amount: string }[]>`SELECT t.kind::text AS kind, SUM(e.amount)::text AS amount FROM "MoneyTransaction" t JOIN "MoneyEntry" e ON e."transactionId"=t.id AND e."budgetId"=t."budgetId" WHERE t."budgetId"=${budgetId} AND t."voidedAt" IS NULL AND t.date >= ${start} AND t.date < ${end} GROUP BY 1`,
-      tx.categoryGroup.findMany({ where: { budgetId }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }], select: { id: true, name: true, version: true, archivedAt: true } }),
+      tx.categoryGroup.findMany({ where: { budgetId }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }], select: { id: true, name: true, note: true, version: true, archivedAt: true } }),
     ])
+    const filteredReport = await tx.$queryRaw<{ kind: string; categoryId: string | null; amount: string }[]>(Prisma.sql`SELECT t.kind::text AS kind, t."categoryId", SUM(e.amount)::text AS amount FROM "MoneyTransaction" t JOIN "MoneyEntry" e ON e."transactionId"=t.id AND e."budgetId"=t."budgetId" LEFT JOIN "BudgetCategory" c ON c.id=t."categoryId" AND c."budgetId"=t."budgetId" WHERE ${reportWhere(budgetId, month, filters)} GROUP BY 1,2`)
+    const filteredAmount = (kind: string) => filteredReport.filter(row => row.kind === kind).reduce((sum, row) => sum + cents(row.amount, true), 0n)
     const amountFor = (kind: string) => report.find(row => row.kind === kind)?.amount ?? '0.00'
-    const rows = transactions.slice(0, 50).map(saved => ({ id: saved.id, kind: saved.kind, date: saved.date.toISOString().slice(0, 10), categoryId: saved.categoryId, memo: saved.memo, version: saved.version, voided: !!saved.voidedAt, accountId: saved.entries[0].accountId, toAccountId: saved.entries[1]?.accountId ?? null, amount: decimal(cents(saved.entries[0].amount.toFixed(2), true) < 0n ? -cents(saved.entries[0].amount.toFixed(2), true) : cents(saved.entries[0].amount.toFixed(2), true)) }))
+    const rows = transactions.slice(0, 50).map(saved => ({ id: saved.id, kind: saved.kind, date: saved.date.toISOString().slice(0, 10), categoryId: saved.categoryId, memo: saved.memo, payee: saved.payee, version: saved.version, voided: !!saved.voidedAt, accountId: saved.entries[0].accountId, toAccountId: saved.entries[1]?.accountId ?? null, amount: decimal(cents(saved.entries[0].amount.toFixed(2), true) < 0n ? -cents(saved.entries[0].amount.toFixed(2), true) : cents(saved.entries[0].amount.toFixed(2), true)) }))
     const totalBalance = balances.reduce((sum, row) => sum + cents(row._sum.amount?.toFixed(2) ?? '0.00', true), 0n)
     return {
-      budget: { id: budget.id, name: budget.name, role: budget.role, currency: budget.currency, revision: budget.moneyRevision }, month, today, page, hasNext: transactions.length > 50,
+      budget: { id: budget.id, name: budget.name, role: budget.role, currency: budget.currency, revision: budget.moneyRevision }, month, today, page, filters, hasNext: transactions.length > 50,
       readyToAssign: decimal(totals.readyToAssign), futureAssigned: decimal(totals.futureAssigned), pastOverspending: decimal(totals.pastOverspending), totalBalance: decimal(totalBalance),
       accounts: accounts.map(saved => ({ id: saved.id, name: saved.name, kind: saved.kind, version: saved.version, closed: !!saved.closedAt, balance: balances.find(row => row.accountId === saved.id)?._sum.amount?.toFixed(2) ?? '0.00' })),
-      groups: groups.map(saved => ({ id: saved.id, name: saved.name, version: saved.version, archived: !!saved.archivedAt })),
+      groups: groups.map(saved => ({ id: saved.id, name: saved.name, note: saved.note, version: saved.version, archived: !!saved.archivedAt })),
       categories: categories.map(saved => {
         const values = totals.categories.get(saved.id)
         const assigned = decimal(values?.assigned ?? 0n), available = decimal(values?.available ?? 0n)
         const target = saved.target ? { id: saved.target.id, kind: saved.target.kind, amount: saved.target.amount.toFixed(2), startMonth: saved.target.startMonth.toISOString().slice(0, 7), dueDate: saved.target.dueDate?.toISOString().slice(0, 10) ?? null, version: saved.target.version, removed: !!saved.target.removedAt } : null
-        return { id: saved.id, groupId: saved.groupId, name: saved.name, version: saved.version, archived: !!saved.archivedAt, carry: decimal(values?.carry ?? 0n), assigned, activity: decimal(values?.activity ?? 0n), available, target: target ? { ...target, ...targetProgress(target, month, assigned, available, today) } : null }
+        return { id: saved.id, groupId: saved.groupId, name: saved.name, note: saved.note, version: saved.version, archived: !!saved.archivedAt, carry: decimal(values?.carry ?? 0n), assigned, activity: decimal(values?.activity ?? 0n), available, target: target ? { ...target, ...targetProgress(target, month, assigned, available, today) } : null }
       }),
       report: { opening: decimal(cents(amountFor('OPENING'), true)), income: decimal(cents(amountFor('INCOME'), true)), expenses: decimal(-cents(amountFor('EXPENSE'), true)), refunds: decimal(cents(amountFor('REFUND'), true)), netSpending: decimal(-cents(amountFor('EXPENSE'), true) - cents(amountFor('REFUND'), true)) },
+      filteredReport: { opening: decimal(filteredAmount('OPENING')), income: decimal(filteredAmount('INCOME')), expenses: decimal(-filteredAmount('EXPENSE')), refunds: decimal(filteredAmount('REFUND')), netSpending: decimal(-filteredAmount('EXPENSE') - filteredAmount('REFUND')), categories: categories.map(row => ({ id: row.id, netSpending: decimal(-filteredReport.filter(item => item.categoryId === row.id && ['EXPENSE', 'REFUND'].includes(item.kind)).reduce((sum, item) => sum + cents(item.amount, true), 0n)) })) },
       transactions: rows, activity: activity.map(row => ({ ...row, createdAt: row.createdAt.toISOString() })),
     }
   }, { isolationLevel: 'RepeatableRead', timeout: 15_000 })
@@ -327,16 +346,37 @@ export async function moneySnapshot(userId: string, budgetId: string, selectedMo
 
 export type MoneySnapshot = Awaited<ReturnType<typeof moneySnapshot>>
 
-export async function exportMoney(userId: string, budgetId: string, selectedMonth: string) {
+export async function exportMoney(userId: string, budgetId: string, selectedMonth: string, input: FilterInput = {}) {
   const month = budgetMonth(selectedMonth)
-  const start = calendarDate(`${month}-01`), end = new Date(start)
-  end.setUTCMonth(end.getUTCMonth() + 1)
+  const filters = moneyFilters(month, input)
   return prisma.$transaction(async tx => {
     await permission(tx, budgetId, userId)
-    const transactions = await tx.moneyTransaction.findMany({ where: { budgetId, date: { gte: start, lt: end } }, orderBy: [{ date: 'asc' }, { id: 'asc' }], take: 10001, include: { category: { select: { name: true } }, entries: { orderBy: { position: 'asc' }, include: { account: { select: { name: true } } } } } })
+    const transactions = await tx.moneyTransaction.findMany({ where: transactionWhere(budgetId, month, filters), orderBy: [{ date: 'asc' }, { id: 'asc' }], take: 10001, include: { category: { select: { name: true } }, entries: { orderBy: { position: 'asc' }, include: { account: { select: { name: true } } } } } })
     if (transactions.length > 10000) throw new AccessError(413, 'This month exceeds the 10,000-record export limit')
     function cell(value: string) { return `"${(/^[\s]*[=+\-@\t\r]/.test(value) ? "'" + value : value).replaceAll('"', '""')}"` }
-    const rows = transactions.map(row => [row.id, row.date.toISOString().slice(0, 10), row.kind, row.voidedAt ? 'VOIDED' : 'ACTIVE', row.entries[0].account.name, row.entries[1]?.account.name ?? '', row.category?.name ?? '', row.entries[0].amount.abs().toFixed(2), 'NGN', row.memo])
-    return [['ID', 'Date', 'Type', 'Status', 'Account', 'To account', 'Category', 'Amount', 'Currency', 'Note'], ...rows].map(row => row.map(cell).join(',')).join('\r\n')
+    const rows = transactions.map(row => [row.id, row.date.toISOString().slice(0, 10), row.kind, row.voidedAt ? 'VOIDED' : 'ACTIVE', row.entries[0].account.name, row.entries[1]?.account.name ?? '', row.category?.name ?? '', row.entries[0].amount.abs().toFixed(2), 'NGN', row.memo, row.payee])
+    return [['ID', 'Date', 'Type', 'Status', 'Account', 'To account', 'Category', 'Amount', 'Currency', 'Note', 'Payee'], ...rows].map(row => row.map(cell).join(',')).join('\r\n')
   }, { isolationLevel: 'RepeatableRead', timeout: 15_000 })
+}
+
+export function csvCell(value: string) { return `"${(/^[\s]*[=+\-@\t\r]/.test(value) ? "'" + value : value).replaceAll('"', '""')}"` }
+
+export async function exportReport(userId: string, budgetId: string, month: string, filters: FilterInput) {
+  const data = await moneySnapshot(userId, budgetId, month, 1, filters), r = data.filteredReport
+  const rows = [['Bimo report', data.budget.name, month, 'NGN'], ['Measure', 'Amount'], ...(['opening', 'income', 'expenses', 'refunds', 'netSpending'] as const).map(key => [key, r[key]]), [], ['Category', 'Group', 'Assigned (whole month)', 'Net spending (filtered)', 'Available (whole month)'], ...data.categories.map(row => [row.name, data.groups.find(g => g.id === row.groupId)?.name ?? 'Ungrouped', row.assigned, r.categories.find(c => c.id === row.id)!.netSpending, row.available])]
+  return rows.map(row => row.map(csvCell).join(',')).join('\r\n')
+}
+
+export async function portableBudget(userId: string, budgetId: string) {
+  return prisma.$transaction(async tx => {
+    const budget = await permission(tx, budgetId, userId)
+    const [accounts, categories, groups, targets, assignments, transactions] = await Promise.all([
+      tx.moneyAccount.findMany({ where: { budgetId }, take: 10001 }), tx.budgetCategory.findMany({ where: { budgetId }, take: 10001 }),
+      tx.categoryGroup.findMany({ where: { budgetId }, take: 10001 }), tx.categoryTarget.findMany({ where: { budgetId }, take: 10001 }),
+      tx.budgetAssignment.findMany({ where: { budgetId }, take: 10001 }),
+      tx.moneyTransaction.findMany({ where: { budgetId }, take: 10001, orderBy: [{ date: 'asc' }, { id: 'asc' }], include: { entries: { orderBy: { position: 'asc' } } } }),
+    ])
+    if ([accounts, categories, groups, targets, assignments, transactions].some(rows => rows.length > 10000)) throw new AccessError(413, 'This budget exceeds the portable export limit of 10,000 records per section. Request a larger export before relying on this file.')
+    return { format: 'bimo-finances', version: 1, exportedAt: new Date().toISOString(), budget: { id: budget.id, name: budget.name, currency: budget.currency, timezone: budget.timezone }, accounts, categories, groups, targets, assignments, transactions }
+  }, { isolationLevel: 'RepeatableRead', timeout: 15000 })
 }

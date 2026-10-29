@@ -17,6 +17,7 @@ export function AuthForm({ mode, googleConfigured }: { mode: AuthMode; googleCon
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const linkingError = query.get('error') === 'account_not_linked'
+  const destination = () => sessionStorage.getItem('bimo-invitation-v1') ? '/invitations' : '/'
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError(''); setNotice('')
@@ -26,13 +27,13 @@ export function AuthForm({ mode, googleConfigured }: { mode: AuthMode; googleCon
     try {
       let result
       if (mode === 'signup') {
-        result = await authClient.signUp.email({ email, password, name: String(fields.get('name') ?? '').trim(), callbackURL: '/setup' })
+        result = await authClient.signUp.email({ email, password, name: String(fields.get('name') ?? '').trim(), callbackURL: destination() === '/invitations' ? '/invitations' : '/setup' })
         if (!result.error) setNotice('Check the local test inbox for your verification link. Verify your email before opening a budget.')
       } else if (mode === 'signin') {
         result = await authClient.signIn.email({ email, password })
-        if (!result.error) { router.replace('/'); router.refresh(); return }
+        if (!result.error) { router.replace(destination()); router.refresh(); return }
       } else if (mode === 'verify') {
-        result = await authClient.sendVerificationEmail({ email, callbackURL: '/setup' })
+        result = await authClient.sendVerificationEmail({ email, callbackURL: destination() === '/invitations' ? '/invitations' : '/setup' })
         if (!result.error) setNotice('If this address is eligible, a verification link is in the local test inbox.')
       } else if (mode === 'forgot-password') {
         result = await authClient.requestPasswordReset({ email, redirectTo: '/auth/reset-password' })
@@ -49,7 +50,7 @@ export function AuthForm({ mode, googleConfigured }: { mode: AuthMode; googleCon
 
   async function google() {
     setBusy(true); setError('')
-    try { const result = await authClient.signIn.social({ provider: 'google', callbackURL: '/', errorCallbackURL: '/auth/signin' }); if (result.error) setError('Google sign-in could not start. Please try again.') } catch { setError('Google sign-in could not start.') } finally { setBusy(false) }
+    try { const result = await authClient.signIn.social({ provider: 'google', callbackURL: destination(), errorCallbackURL: '/auth/signin' }); if (result.error) setError('Google sign-in could not start. Please try again.') } catch { setError('Google sign-in could not start.') } finally { setBusy(false) }
   }
 
   return <section className="panel auth"><h1>{titles[mode]}</h1><p className="muted">A fresh account for the new private-budget foundation.</p>

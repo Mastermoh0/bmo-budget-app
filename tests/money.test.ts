@@ -1,17 +1,16 @@
 import 'dotenv/config'
 import assert from 'node:assert/strict'
 import { test, after } from 'node:test'
-import { randomUUID } from 'node:crypto'
+import { randomUUID, randomInt } from 'node:crypto'
 import { prisma } from '../lib/db'
 import { cents, decimal, calendarDate, monthTotals } from '../lib/money-math'
 
 const origin = process.env.BETTER_AUTH_URL!
 assert.equal(process.env.BIMO_DATABASE_TARGET, 'bimo_modern_test')
 assert.equal(new URL(process.env.DATABASE_URL!).pathname, '/bimo_modern_test')
-let ip = 80
 class Browser {
   cookie = ''
-  ip = `198.51.100.${ip++}`
+  ip = `198.${randomInt(18,20)}.${randomInt(256)}.${randomInt(1,255)}`
   async call(path: string, body?: unknown, host = origin, extra: Record<string, string> = {}) {
     const response = await fetch(new URL(path, host), { method: body === undefined ? 'GET' : 'POST', body: body === undefined ? undefined : JSON.stringify(body), headers: { Origin: host, Cookie: this.cookie, 'Content-Type': 'application/json', 'x-forwarded-for': this.ip, 'x-vercel-forwarded-for': this.ip, ...extra } })
     if (response.headers.getSetCookie().length) this.cookie = response.headers.getSetCookie().map(value => value.split(';')[0]).join('; ')
@@ -197,7 +196,7 @@ test('permissions, forged relations, malformed amounts, origin and direct databa
   await f.save({ ...body, date: '2199-01-01', requestId: randomUUID() }, 400)
   await f.save({ ...body, categoryId: 'another-budget-category', requestId: randomUUID() }, 400)
   await f.save({ ...body, kind: 'TRANSFER', categoryId: null, toAccountId: a.id, requestId: randomUUID() }, 400)
-  const otherBudget = await prisma.budget.create({ data: { ownerUserId: f.user.id, requestId: randomUUID(), creationFingerprint: 'fixture', name: 'Other isolated budget' } })
+  const otherBudget = await prisma.budget.create({ data: { creatorUserId: f.user.id, ownerUserId: f.user.id, requestId: randomUUID(), creationFingerprint: 'fixture', name: 'Other isolated budget' } })
   const foreign = await prisma.moneyAccount.create({ data: { budgetId: otherBudget.id, name: 'Other budget account', kind: 'BANK' } })
   await f.save({ ...body, kind: 'TRANSFER', categoryId: null, toAccountId: foreign.id, requestId: randomUUID() }, 400)
   await assert.rejects(prisma.moneyTransaction.create({ data: { budgetId: f.budget.id, kind: 'TRANSFER', date: new Date('2026-09-01'), entries: { create: [{ position: 0, amount: '-1.00', accountId: a.id }] } } }), error => error instanceof Error && error.message.includes('Invalid Bimo transfer posting'))
@@ -312,7 +311,7 @@ test('groups and targets enforce viewer/editor/removal, origin, foreign referenc
   await f.save({ ...target, requestId: randomUUID(), version: 1, kind: 'BY_DATE', dueDate: '2026-08-31' }, 400)
   await f.save({ ...target, requestId: randomUUID(), version: 1, kind: 'BY_DATE', dueDate: '2026-09-31' }, 400)
   await f.save({ ...target, requestId: randomUUID(), version: 1, kind: 'MONTHLY', dueDate: '2026-09-30' }, 400)
-  const foreignBudget = await prisma.budget.create({ data: { ownerUserId: f.user.id, name: 'Foreign group fixture', requestId: randomUUID(), creationFingerprint: 'fixture' } })
+  const foreignBudget = await prisma.budget.create({ data: { creatorUserId: f.user.id, ownerUserId: f.user.id, name: 'Foreign group fixture', requestId: randomUUID(), creationFingerprint: 'fixture' } })
   const foreignGroup = await prisma.categoryGroup.create({ data: { budgetId: foreignBudget.id, name: 'Private foreign group' } })
   await f.save({ action: 'category-state', id: category.id, version: 1, name: 'Groceries', inactive: false, groupId: foreignGroup.id }, 400)
   await assert.rejects(prisma.budgetCategory.update({ where: { id: category.id }, data: { groupId: foreignGroup.id } }), error => Boolean(error && typeof error === 'object' && 'code' in error && error.code === 'P2003'))

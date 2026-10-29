@@ -10,7 +10,7 @@ export async function GET(request: Request, context: Context) {
     const session = await verifiedSession(request.headers)
     const { id } = await context.params
     const query = new URL(request.url).searchParams
-    return json(await moneySnapshot(session.user.id, id, query.get('month') ?? todayLagos().slice(0, 7), Number(query.get('page') ?? '1')))
+    return json(await moneySnapshot(session.user.id, id, query.get('month') ?? todayLagos().slice(0, 7), Number(query.get('page') ?? '1'), Object.fromEntries(query)))
   } catch (error) { return apiFailure(error) }
 }
 

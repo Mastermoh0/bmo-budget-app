@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import assert from 'node:assert/strict'
 import { test, after } from 'node:test'
-import { randomUUID } from 'node:crypto'
+import { randomUUID, randomInt } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import { prisma } from '../lib/db'
 import { assertDatabaseTarget } from '../lib/database-target'
@@ -12,10 +12,9 @@ const origin = process.env.BETTER_AUTH_URL!
 assert.equal(process.env.BIMO_DATABASE_TARGET, 'bimo_modern_test', 'Tests must never use the old or development database')
 assert.equal(new URL(process.env.DATABASE_URL!).pathname, '/bimo_modern_test')
 const password = 'Bimo local passphrase 2026!'
-let addressCounter = 1
 class Browser {
   cookies = new Map<string, string>()
-  ip = `198.51.100.${addressCounter++}`
+  ip = `198.${randomInt(18,20)}.${randomInt(256)}.${randomInt(1,255)}`
   async call(path: string, data?: unknown, method = data === undefined ? 'GET' : 'POST', host = origin, extra: Record<string, string> = {}) {
     const response = await fetch(new URL(path, host), {
       method, redirect: 'manual', body: data === undefined ? undefined : JSON.stringify(data),
@@ -216,7 +215,7 @@ test('fresh auth and private-budget foundation through two production instances'
     await status(await first.call('/api/budgets'), 401)
   })
   await t.test('shared database rate limiting is atomic across two app instances', async () => {
-    const browser = new Browser(); browser.ip = '203.0.113.244'
+    const browser = new Browser()
     const responses = await Promise.all(Array.from({ length: 12 }, (_, index) => browser.call('/api/auth/sign-in/email', { email: `rate-${randomUUID()}@example.invalid`, password }, 'POST', index % 2 ? process.env.TEST_SECOND_ORIGIN! : origin)))
     assert.equal(responses.filter(response => response.status === 429).length, 7)
     assert(responses.every(response => response.status === 401 || response.status === 429))

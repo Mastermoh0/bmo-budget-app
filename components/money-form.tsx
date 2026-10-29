@@ -10,7 +10,7 @@ export function money(value: string) {
   return `${whole.startsWith('-') ? '−' : ''}₦${whole.replace('-', '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${fraction.padEnd(2, '0')}`
 }
 
-export function SaveForm({ budgetId, children, build, label, saved, disabled = false }: { budgetId: string; children?: ReactNode; build: (fields: Fields) => object; label: string; saved?: () => void; disabled?: boolean }) {
+export function SaveForm({ budgetId, children, build, label, saved, disabled = false, endpoint = 'money' }: { budgetId: string; children?: ReactNode; build: (fields: Fields) => object; label: string; saved?: () => void; disabled?: boolean; endpoint?: 'money' | 'sharing' }) {
   const ready = useHydrated(), router = useRouter()
   const [refreshing, startTransition] = useTransition()
   const pending = useRef<{ requestId: string; body: object } | null>(null)
@@ -21,7 +21,7 @@ export function SaveForm({ budgetId, children, build, label, saved, disabled = f
     if (!pending.current) pending.current = { requestId: crypto.randomUUID(), body: build(Object.fromEntries(new FormData(event.currentTarget))) }
     setBusy(true); setError(''); setSuccess('')
     try {
-      const response = await fetch(`/api/budgets/${budgetId}/money`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...pending.current.body, requestId: pending.current.requestId }) })
+      const response = await fetch(`/api/budgets/${budgetId}/${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...pending.current.body, requestId: pending.current.requestId }) })
       const result = await response.json()
       if (!response.ok) { setError(result.error || 'The change could not be saved.'); if (response.status < 500) pending.current = null; return }
       pending.current = null; setSuccess('Saved.')

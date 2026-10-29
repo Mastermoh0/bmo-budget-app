@@ -2,7 +2,7 @@
 
 This isolated development copy implements the approved database/Better Auth milestone. The original Next.js-upgraded app is preserved at `C:\Users\MasterMoh\bmo-budget-app`, checkpoint `7319b0f`. The current branch is `codex/database-auth-foundation`.
 
-The preview supports verified email/password registration, recovery, email/password changes, session management, private-budget setup, current owner/editor/viewer access, financial accounts, category groups/allocations, savings targets, transactions, monthly reports and CSV export. Sharing invitations, Gmail, chat and redesign remain later milestones. Unported API paths return an explicit unavailable response; the previous source is preserved in `legacy-reference/`, outside the active build. The old Prisma schema/migrations and socket-server source remain reference material.
+The preview supports verified email/password registration, recovery, email/password changes, session management, private-budget setup, current owner/editor/viewer access, financial accounts, category groups/allocations, savings targets, transactions with payees/search/filters, filtered table/chart reports, CSV and portable financial exports, shared notes and household invitations/roles/ownership transfer. Gmail, chat and redesign remain later milestones. Unported API paths return an explicit unavailable response; the previous source is preserved in `legacy-reference/`, outside the active build. The old Prisma schema/migrations and socket-server source remain reference material.
 
 ## Run locally
 
