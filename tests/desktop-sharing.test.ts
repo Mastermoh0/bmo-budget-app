@@ -78,6 +78,11 @@ test('shared notes are versioned, audited and do not move money; viewers cannot 
   }
   const s = await f.snapshot(); assert.equal(s.totalBalance, '1000.00'); assert.match(s.categories[0].note, /script/); assert.equal(s.groups[0].version, 2)
   await prisma.budgetMember.create({ data: { budgetId: f.budget.id, userId: viewer.user.id, role: 'VIEWER' } })
+  const viewerPage = await viewer.browser.call(`/budgets/${f.budget.id}?month=2026-09`)
+  assert.equal(viewerPage.status, 200)
+  const viewerHtml = await viewerPage.text()
+  assert.match(viewerHtml, /Shared budget notes/)
+  assert.doesNotMatch(viewerHtml, /<textarea\b/)
   await result(await viewer.browser.call(`${f.base}/money`, { requestId: randomUUID(), action: 'note', kind: 'category', id: category.id, version: 2, note: 'Denied' }), 403)
   assert.equal(await prisma.moneyOperation.count({ where: { budgetId: f.budget.id, action: 'note' } }), 2)
   await f.money({ action: 'note', kind: 'category', id: category.id, version: 2, note: 'x'.repeat(1001) }, 400)

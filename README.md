@@ -73,6 +73,8 @@ Evidence: `C:\Users\MasterMoh\.codex\visualizations\2026\10\25\01a173e9-b493-790
 
 Focused budgeting forms now open in task windows: assignments, category moves, transactions/corrections, account/category/group management and savings targets. Cancel, Close, Escape or an outside click dismiss an idle window; successful saves refresh and close. Pending saves remain open. Closing/reopening an unconfirmed save on the same mounted page retains its original retry details; reloading or navigating away does not persist that client state. The native modal contains focus and blocks background interaction. See the shared plan's section 37 and the [recorded popup checks](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/task-windows-2026-10-29/evidence.md).
 
+Notes is available beside the workspace actions on all six money views. It opens a right-hand panel with existing shared group/category notes. Saves keep the panel open and preserve other unfinished notes; Cancel, Close, Escape or an outside click dismiss when idle. Viewers can read without editing. See section 38 of the shared plan and the [Notes walkthrough](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/notes-panel-2026-10-29/evidence.md).
+
 ## Credentials and hosted checks deferred by the user
 
 Google sign-in/linking is wired for identity scopes only and disabled until both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are placed in the ignored `.env`. Register `http://localhost:3100/api/auth/callback/google` in that OAuth client. There is no Gmail permission or mailbox integration here. Do not put secrets in Git or chat.

@@ -1550,3 +1550,17 @@ Twenty screenshots and assertion logs are retained. The first browser/preview se
 ![Assign money window in Canvas](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/task-windows-2026-10-29/review-desktop-light.png)
 
 ![Transaction window in Night Desk](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/task-windows-2026-10-29/review-desktop-dark.png)
+
+## 38. Notes as a side companion — implemented locally, 29 October 2026
+
+The user requested Notes as a separate side window. A Notes button beside the workspace actions now opens a right-hand panel on Budget, Accounts, Transactions, Reports, Targets and Activity. The old inline Shared notes section is removed. Existing group/category notes and household permissions remain the storage and access model; this increment does not add personal/freeform notebooks.
+
+The panel follows Canvas/Night Desk, preserves the overview behind it and fits narrow screens. Its heading and footer remain available while the notes scroll. Cancel, Close, Escape or clicking outside dismiss an idle panel. Native modality contains keyboard focus, blocks background interaction and returns focus to Notes on dismissal. Ordinary dismissal resets unsent edits; saved notes remain saved.
+
+Saving a note refreshes its text and keeps the panel open without clearing unfinished notes in other groups/categories. Active saves block dismissal and duplicate actions. An interrupted confirmation retains the original note/request across close/reopen on the same mounted page, and other forms stay disabled until that request is resolved. The retry sends the original content even after visible edits. Reload/navigation is still outside this client-state retention guarantee. Viewers receive notes text without editing controls and the backend still rejects their writes.
+
+The final production build, lint and nonincremental type checking passed. **44 regression tests passed**, including a new viewer-page assertion that notes are readable and no textarea is delivered, alongside the existing denied-write/version/audit checks. Recorded Playwright checks cover opening on all six views, docking, cancellation/reset, save feedback, preservation of a second unfinished note, an injected committed-but-unconfirmed save, original-content retry, keyboard focus/dismissal and dark/narrow layout. Original synthetic notes were restored through the UI. Account balance remained **₦10,000.00**, ready to assign **₦6,000.00** and net spending **₦0.00**; no financial records were changed by this Notes walkthrough. Tests used a dedicated synthetic budget rather than the user's open budget.
+
+Seven screenshots, one finalized recording and assertion logs are retained in the [Notes evidence index](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/notes-panel-2026-10-29/evidence.md). No dependency, lockfile, schema, migration, financial calculation or authorization service changed. Verification is local Chromium plus the existing integration suite; other browsers, devices and hosted deployment remain unverified.
+
+![Notes companion panel in Night Desk](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/notes-panel-2026-10-29/05-notes-dark.png)
