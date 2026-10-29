@@ -86,6 +86,17 @@ test('shared notes are versioned, audited and do not move money; viewers cannot 
   await result(await viewer.browser.call(`${f.base}/money`, { requestId: randomUUID(), action: 'note', kind: 'category', id: category.id, version: 2, note: 'Denied' }), 403)
   assert.equal(await prisma.moneyOperation.count({ where: { budgetId: f.budget.id, action: 'note' } }), 2)
   await f.money({ action: 'note', kind: 'category', id: category.id, version: 2, note: 'x'.repeat(1001) }, 400)
+  for (const [kind, id] of [['category', category.id], ['group', group.id]]) {
+    const deletion = { requestId: randomUUID(), action: 'note', kind, id, version: 2, note: '' }
+    await f.money(deletion); await f.money(deletion)
+    await f.money({ ...deletion, requestId: randomUUID(), note: 'Stale replacement' }, 409)
+  }
+  const cleared = await f.snapshot()
+  assert.equal(cleared.categories[0].note, ''); assert.equal(cleared.groups[0].note, '')
+  assert.equal(cleared.categories.length, 1); assert.equal(cleared.groups.length, 1)
+  assert.equal(cleared.totalBalance, '1000.00')
+  assert.equal(await prisma.moneyOperation.count({ where: { budgetId: f.budget.id, action: 'note' } }), 4)
+  await result(await viewer.browser.call(`${f.base}/money`, { requestId: randomUUID(), action: 'note', kind: 'category', id: category.id, version: 3, note: '' }), 403)
 })
 
 test('invitations require verified recipient, retry once, revoke, expire, and enforce owner-only administration', async () => {

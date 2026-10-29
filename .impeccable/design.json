@@ -547,6 +547,7 @@
       }
     ],
     "notes": [
+      "Notes actions: Add note for empty items; Edit note and secondary negative-colour Delete note for saved text. Editing focuses the textarea; Cancel edit resets on reopening and returns focus. Successful Save note returns to reading while the panel remains open. Delete sends an empty note using existing version/audit safeguards and preserves the category/group. Hidden forms remain mounted to retain request lifecycle; new field changes clear stale Saved feedback. Viewers receive no mutation controls.",
       "Notes companion panel: components/budget-notes.tsx uses TaskDialog side. The right-docked panel has a 480px cap, viewport width minus 24px on narrow screens, 12px margins, height/max-height 100dvh minus 24px and 24px padding. Heading/footer do not shrink; content scrolls. Existing theme, radius, backdrop and shadow apply. Unlike centered tasks, confirmed saves keep Notes open and retain other drafts. An unconfirmed save blocks other forms until retry; retention is limited to the same mounted page. Viewers read without editors. No personal/freeform notes storage is introduced.",
       "Tonal ramps are synthesized OKLCH panel previews, not additional production palette tokens. Frontmatter contains the actual source colours.",
       "Component samples use CSS custom properties with Canvas fallback values so they render independently and inherit Night Desk roles when those variables are supplied. Static switch and navigation samples do not emulate the application runtime.",

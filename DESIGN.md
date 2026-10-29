@@ -272,6 +272,8 @@ An unconfirmed save keeps its original request identifier, body and form state w
 
 The task-window specimen in the sidecar is a static visual sample. Native focus containment, dismissal, reset and request recovery belong to the application runtime, not the specimen.
 
+Notes has explicit reading and editing states. An empty item offers Add note; saved text offers Edit note and a secondary Delete note action in the negative colour role. Editing focuses the textarea, Save note returns to reading after success, and Cancel edit discards that draft and restores the action's focus. Delete clears only the note text through the existing versioned/audited operation, retaining the category/group. The save forms remain mounted when hidden so refresh and uncertain-request state are not lost. Changing fields clears any stale Saved message. Viewers have no note mutation controls.
+
 ### Loading and action feedback
 
 Real Next route `loading.tsx` boundaries render `PageSkeleton` variants for budgets, budget subroutes, household, settings and authentication. Placeholder shapes mirror headings, tabs, metrics or form sections as appropriate. A single status container has `aria-busy="true"` and a spoken loading description; all decorative blocks are hidden from assistive technology. The 1.5s pulse animates opacity between 1 and 0.5. No artificial wait or sample money is used.

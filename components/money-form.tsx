@@ -35,7 +35,7 @@ export function SaveForm({ budgetId, children, build, label, saved, disabled = f
       startTransition(() => { saved?.(); router.refresh() })
     } catch { setUnconfirmed(true); dialog?.progress('unconfirmed'); setError('Save not confirmed. Retry to send the same change safely, even if you have edited the fields.') } finally { setBusy(false) }
   }
-  return <form method="post" onSubmit={submit} aria-busy={busy || refreshing}><fieldset disabled={!ready || busy || refreshing || disabled || dialog?.phase === 'saving' || waitingForOtherForm}>{children}<ActionButton disabled={!ready || disabled} busy={busy || refreshing} pendingLabel="Saving…">{label}</ActionButton></fieldset>{error && <p role="alert" className="error">{error}</p>}{success && <p role="status" className="success">{success}</p>}</form>
+  return <form method="post" onSubmit={submit} onChange={() => setSuccess('')} aria-busy={busy || refreshing}><fieldset disabled={!ready || busy || refreshing || disabled || dialog?.phase === 'saving' || waitingForOtherForm}>{children}<ActionButton disabled={!ready || disabled} busy={busy || refreshing} pendingLabel="Saving…">{label}</ActionButton></fieldset>{error && <p role="alert" className="error">{error}</p>}{success && <p role="status" className="success">{success}</p>}</form>
 }
 
 export function Amount({ label = 'Amount (NGN)', value = '', signed = false }: { label?: string; value?: string; signed?: boolean }) {
