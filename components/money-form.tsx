@@ -1,9 +1,10 @@
 'use client'
-import { useRef, useState, useTransition, type FormEvent, type ReactNode } from 'react'
+import { useContext, useEffect, useRef, useState, useTransition, type FormEvent, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { useHydrated } from '@/lib/use-hydrated'
 import { userFacingError } from '@/lib/user-errors'
 import { ActionButton } from './action-button'
+import { TaskDialogContext } from './task-dialog'
 
 type Fields = Record<string, FormDataEntryValue>
 
@@ -17,20 +18,22 @@ export function SaveForm({ budgetId, children, build, label, saved, disabled = f
   const [refreshing, startTransition] = useTransition()
   const pending = useRef<{ requestId: string; body: object } | null>(null)
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [success, setSuccess] = useState('')
+  const dialog = useContext(TaskDialogContext), finished = useRef(false)
+  useEffect(() => { if (finished.current && !busy && !refreshing) { finished.current = false; dialog?.complete() } }, [busy, refreshing, dialog])
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (busy || refreshing || disabled) return
+    if (busy || refreshing || disabled || dialog?.phase === 'saving') return
     if (!pending.current) pending.current = { requestId: crypto.randomUUID(), body: build(Object.fromEntries(new FormData(event.currentTarget))) }
-    setBusy(true); setError(''); setSuccess('')
+    setBusy(true); dialog?.progress('saving'); setError(''); setSuccess('')
     try {
       const response = await fetch(`/api/budgets/${budgetId}/${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...pending.current.body, requestId: pending.current.requestId }) })
       const result = await response.json()
-      if (!response.ok) { setError(`${userFacingError(response.status, result)}${response.status >= 500 ? ' Retrying sends your original details, even if you edit the fields.' : ''}`); if (response.status < 500) pending.current = null; return }
-      pending.current = null; setSuccess('Saved.')
+      if (!response.ok) { setError(`${userFacingError(response.status, result)}${response.status >= 500 ? ' Retrying sends your original details, even if you edit the fields.' : ''}`); if (response.status < 500) pending.current = null; dialog?.progress(response.status >= 500 ? 'unconfirmed' : 'idle'); return }
+      pending.current = null; finished.current = true; setSuccess('Saved.')
       startTransition(() => { saved?.(); router.refresh() })
-    } catch { setError('Save not confirmed. Retry to send the same change safely, even if you have edited the fields.') } finally { setBusy(false) }
+    } catch { dialog?.progress('unconfirmed'); setError('Save not confirmed. Retry to send the same change safely, even if you have edited the fields.') } finally { setBusy(false) }
   }
-  return <form method="post" onSubmit={submit} aria-busy={busy || refreshing}><fieldset disabled={!ready || busy || refreshing || disabled}>{children}<ActionButton disabled={!ready || disabled} busy={busy || refreshing} pendingLabel="Saving…">{label}</ActionButton></fieldset>{error && <p role="alert" className="error">{error}</p>}{success && <p role="status" className="success">{success}</p>}</form>
+  return <form method="post" onSubmit={submit} aria-busy={busy || refreshing}><fieldset disabled={!ready || busy || refreshing || disabled || dialog?.phase === 'saving'}>{children}<ActionButton disabled={!ready || disabled} busy={busy || refreshing} pendingLabel="Saving…">{label}</ActionButton></fieldset>{error && <p role="alert" className="error">{error}</p>}{success && <p role="status" className="success">{success}</p>}</form>
 }
 
 export function Amount({ label = 'Amount (NGN)', value = '', signed = false }: { label?: string; value?: string; signed?: boolean }) {

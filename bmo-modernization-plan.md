@@ -1519,3 +1519,34 @@ Browser checks cover both themes, 26 route/theme/width combinations without docu
 ![Real Settings skeleton during loading](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/canvas-design-2026-10-29/skeleton-settings.png)
 
 The requested design, skeleton and feedback work is implemented locally. The guided practice tutorial, remaining Quick Budget contract, optional Gmail draft integration/bank samples and public authorization feasibility, Sentry/provider credentials, real email, privacy/deletion/recovery/restore, hosted performance and deployment remain on their existing roadmap. No paid/cloud resource, domain purchase, real-recipient mail, public deployment or separate mobile/voice/chat/advanced-finance release was introduced. Public readiness and free hosted capacity remain unverified.
+
+## 37. Focused task windows — implemented locally, 29 October 2026
+
+### User decision and delivered behavior
+
+Focused forms should open in a window from their action button, keeping the budget overview in place. Canvas/Night Desk remains the approved visual direction. Assign money and moving money are now windows. Add transaction is available as a window from each money workspace view. Add/manage accounts, categories and groups, savings-target setup/editing, and transaction corrections/voiding use the same shared window pattern. Reports, activity, household and the main budget remain their own views.
+
+An idle window closes with Cancel, the close button, Escape or an outside click. Cancel discards unsent field values, including controlled transaction/target type choices. A drag that begins inside and ends outside does not accidentally close the form. Native modal dialogs contain keyboard focus, make background controls inactive and return focus to the opener. Narrow windows scroll to their footer without horizontal overflow; this is a usable fallback, not the separately planned mobile composition.
+
+Successful saves refresh the data and close automatically. During an active save, controls and dismissal are disabled and a message explains the wait. Validation errors stay inside the window with friendly guidance. If confirmation is interrupted, the window can be closed/reopened while the page remains mounted; its original request ID and payload survive, and a visible reminder offers a safe retry. This does not promise persistence across reload, navigation or closing the browser. The backend's existing idempotency/version/permission checks remain authoritative.
+
+### Verification and preservation
+
+Production build, lint, nonincremental type checking and **44 existing integration tests passed, zero failed**. Retained Playwright CLI assertion scripts additionally checked focus containment/return, cancellation/reset, Escape/outside/close, inside-to-outside dragging, delayed-save protection, successful auto-close, friendly validation, all converted management tasks and both themes at desktop/narrow widths. No uncaught browser page errors were recorded in the walkthrough. The independent Impeccable finish reviewer returned **SHIP** with no blocking fixes; documentation records the intentional dialog geometry and behavior.
+
+A committed-but-unconfirmed synthetic expense was retried after closing/reopening and changing the visible amount: only the original amount was recorded, once. Correction and explicit void then restored the reference totals while retaining history. Independent read-only reconciliation of the dedicated synthetic budget agrees on **₦10,000.00 account balance, ₦4,000.00 assigned, ₦6,000.00 ready to assign and ₦0.00 active spending**. The user's currently open budget and original database were not test targets.
+
+This is a local UI increment with no changes to dependencies, lockfiles, schema/migrations, financial calculations or authorization services. Public provider/hosting checks and the remaining release roadmap are still deferred. Chromium was tested; physical devices and other browser engines were not checked here.
+
+### Recorded evidence
+
+- [Full screenshot, recording and check index](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/task-windows-2026-10-29/evidence.md)
+- [Resumed transaction/retry/management recording](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/task-windows-2026-10-29/task-windows-walkthrough-part2.webm)
+- [Independent finish review](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/task-windows-2026-10-29/finish-review.md)
+- [Independent database reconciliation](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/task-windows-2026-10-29/database-reconciliation.json)
+
+Twenty screenshots and assertion logs are retained. The first browser/preview session stopped before its recording was finalized; that recording is unavailable. The linked recording covers the resumed checks, and the earlier checks remain documented by screenshots and logs. Full-page captures show the native backdrop across the viewport only; the review captures show the actual viewport appearance.
+
+![Assign money window in Canvas](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/task-windows-2026-10-29/review-desktop-light.png)
+
+![Transaction window in Night Desk](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/task-windows-2026-10-29/review-desktop-dark.png)

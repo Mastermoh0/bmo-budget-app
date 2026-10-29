@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import type { MoneySnapshot } from '@/lib/money'
 import { Amount, money, SaveForm } from './money-form'
+import { TaskDialog } from './task-dialog'
 
 type Category = MoneySnapshot['categories'][number]
 const statuses: Record<string, string> = { NOT_STARTED: 'Not started', COMPLETE: 'Target met', OVERDUE: 'Past deadline', IN_PROGRESS: 'In progress' }
@@ -22,9 +23,9 @@ export function Targets({ data }: { data: MoneySnapshot }) {
   const canWrite = data.budget.role !== 'VIEWER'
   return <><section className="notice"><strong>Savings targets guide your plan.</strong><p>Setting a target does not allocate money or change any account balance. Use the Budget page to assign money when you have it.</p></section>{!data.categories.length && <section className="panel"><h2>No categories yet</h2><p>Add a category on the Budget page, then give it a target.</p></section>}{data.categories.map(category => {
     const target = category.target, active = target && !target.removed
-    return <section key={`${category.id}-${target?.version ?? 0}`} className="panel target-card" aria-label={`${category.name} target`}><div className="row spread"><h2>{category.name}{category.archived && ' · Archived'}</h2>{active && <span className={`status ${target.status === 'OVERDUE' ? 'negative' : ''}`}>{statuses[target.status]}</span>}</div><p className="small muted">{data.groups.find(group => group.id === category.groupId)?.name ?? 'Ungrouped'}</p>
+    return <section key={category.id} className="panel target-card" aria-label={`${category.name} target`}><div className="row spread"><h2>{category.name}{category.archived && ' · Archived'}</h2>{active && <span className={`status ${target.status === 'OVERDUE' ? 'negative' : ''}`}>{statuses[target.status]}</span>}</div><p className="small muted">{data.groups.find(group => group.id === category.groupId)?.name ?? 'Ungrouped'}</p>
       {active ? <><p><strong>{money(target.saved)}</strong> of {money(target.amount)} · {target.kind === 'MONTHLY' ? 'monthly contribution' : `available by ${target.dueDate}`}</p><progress max={100} value={target.percent} aria-label={`${category.name} target progress`} /><p className="small">{target.percent}% · {money(target.remaining)} remaining · Starts {target.startMonth}</p><p><strong>{money(target.suggested)}</strong> {target.kind === 'MONTHLY' ? 'more to assign this month' : `suggested extra per month (${target.monthsLeft} month${target.monthsLeft === 1 ? '' : 's'}, including this month)`}</p>{target.shortfall !== '0.00' && <p className="negative small">Includes {money(target.shortfall)} to {target.kind === 'BY_DATE' ? 'cover negative category availability before saving' : 'replace money returned from this month’s allocations'}.</p>}{target.status === 'NOT_STARTED' && <p className="muted small">This target has not started in the selected month.</p>}{target.status === 'OVERDUE' && <p className="negative small">The deadline has passed in this view. The remaining amount is still unfunded.</p>}</> : <p className="muted">No active target.</p>}
-      {canWrite && !category.archived && <details><summary>{active ? 'Edit target' : 'Add target'}</summary><TargetForm data={data} category={category} /></details>}
+      {canWrite && !category.archived && <TaskDialog title={`${active ? 'Edit' : 'Add'} ${category.name} target`} label={active ? 'Edit target' : 'Add target'}><TargetForm data={data} category={category} /></TaskDialog>}
       {canWrite && active && <div className="target-remove"><SaveForm budgetId={data.budget.id} label="Remove target" build={() => ({ action: 'remove-target', categoryId: category.id, version: target.version })} /><p className="small muted">Removing a target keeps your allocations, balances and financial history.</p></div>}
     </section>
   })}</>

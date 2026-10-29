@@ -34,6 +34,7 @@ colors:
   dark-negative-soft: "#382527"
   dark-primary: "#eeeae0"
   dark-on-primary: "#1b1b1b"
+  task-backdrop: "#10182066"
 typography:
   headline:
     fontFamily: "Manrope, system-ui, sans-serif"
@@ -66,10 +67,17 @@ typography:
     fontFamily: "Manrope, system-ui, sans-serif"
     fontSize: "12px"
     lineHeight: 1.65
+  task-heading:
+    fontFamily: "Manrope, system-ui, sans-serif"
+    fontSize: "22px"
+    fontWeight: 750
+    lineHeight: 1.35
+    letterSpacing: "-0.02em"
 rounded:
   progress: "4px"
   tab: "5px"
   control: "6px"
+  task-window: "12px"
   workspace: "14px"
   workspace-narrow: "10px"
 spacing:
@@ -113,6 +121,22 @@ components:
     textColor: "{colors.light-muted}"
     rounded: "{rounded.tab}"
     padding: "3px 8px"
+  task-window-light:
+    backgroundColor: "{colors.light-surface}"
+    textColor: "{colors.light-text}"
+    rounded: "{rounded.task-window}"
+    padding: "28px"
+    width: "min(640px, calc(100vw - 32px))"
+  task-window-dark:
+    backgroundColor: "{colors.dark-surface}"
+    textColor: "{colors.dark-text}"
+    rounded: "{rounded.task-window}"
+    padding: "28px"
+    width: "min(640px, calc(100vw - 32px))"
+  task-window-narrow:
+    rounded: "{rounded.task-window}"
+    padding: "22px 18px"
+    width: "calc(100vw - 20px)"
 ---
 
 # Design System: Bimo Canvas and Night Desk
@@ -189,6 +213,8 @@ Common form grids have two equal columns separated by 24px; the broader two-colu
 
 These are the implemented narrow fallbacks. A separately designed mobile composition and the tutorial remain future work.
 
+Task windows use the frontmatter task-window width and padding, scroll internally, and cap their height at `calc(100dvh - 40px)`. At the existing 650px narrow breakpoint, they use the task-window-narrow geometry, cap their height at `calc(100dvh - 24px)`, collapse form grids to one column, wrap the footer and use 16px input, select and textarea text. Both appearances share this geometry.
+
 ## Elevation & Depth
 
 Depth comes from the outer ground, inset surface, tonal washes and fine rules. Panels are open sections with a top divider and generous vertical padding. There is no resting card shadow in the current system.
@@ -196,12 +222,13 @@ Depth comes from the outer ground, inset surface, tonal washes and fine rules. P
 ### Shadow Vocabulary
 
 - **Pressed action:** `inset 0 2px 4px #0003`, paired with a 1px downward translation while a button or button link is active. Disabled controls remove both effects.
+- **Task window:** `0 18px 64px #0003`, reserved for the native modal surface above the shared task-backdrop colour. The shadow and backdrop treatment are also recorded in the sidecar; ordinary sections retain their existing depth treatment.
 
 **The Open Surface Rule.** Preserve the existing open sections and divider-based purpose groups when extending these screens; do not turn them into a stack of elevated cards.
 
 ## Shapes
 
-The workspace uses a gently rounded 14px corner, reduced to 10px on narrow screens. Buttons, fields, notices and correction containers use the 6px control radius. Status tags and navigation tabs use 5px; category tracks and skeleton blocks use 4px. Field borders are 1px, distinct from the quieter section dividers. The provisional authored mark is an inline rounded-square SVG with its Bimo letterform; reuse that asset from the root layout.
+The workspace uses a gently rounded 14px corner, reduced to 10px on narrow screens. Buttons, fields, notices and correction containers use the 6px control radius. Task windows use the frontmatter task-window radius and a 1px control-colour boundary. Status tags and navigation tabs use 5px; category tracks and skeleton blocks use 4px. Field borders are 1px, distinct from the quieter section dividers. The provisional authored mark is an inline rounded-square SVG with its Bimo letterform; reuse that asset from the root layout.
 
 ## Components
 
@@ -230,6 +257,18 @@ The labelled “Dark mode” control is a button with switch semantics and an ex
 ### Purpose category
 
 The signature component is a native details/summary row within a named purpose group. Its closed state shows the category name, available figure, a thin spending track and net-spending/target caption. The chevron rotates on expansion. Its open state exposes carried-in money, monthly assignment, net activity, available money, notes and any savings-target link. Negative availability has both the negative colour and “overspent” text. Archived records remain labelled. The detailed worksheet remains available in a separate disclosure.
+
+### Task windows
+
+Contextual triggers open focused tasks over the current workspace using native `dialog.showModal()`. The implemented scope is Assign money, Move money, Add transaction, transaction correction/void, add/manage account/category/group, and add/edit savings target. Reordering, target removal and shared notes keep their existing controls.
+
+The window uses the current surface, text and control roles with the task-window tokens above. Its heading uses the task-heading role, with a 4px top margin. The heading row has a 20px gap and 24px bottom margin. Close is a 36px square secondary button with 8px padding and an 18px inline cross. The footer has a line-colour top divider, 24px top margin, 18px top padding and a 16px gap. Existing labelled fields, primary save actions and notices retain their styles; correction content loses its enclosing wash and border within the window.
+
+Opening focuses the title. Native modality contains keyboard focus and makes the background inert; closing returns focus to the opener. Cancel, Close, Escape and a pointer click outside dismiss the window, with an inside-to-outside drag excluded. Ordinary dismissal remounts the form so unsent edits reset. Saving disables dismissal and duplicate submission, retains the form during refresh, and closes only after confirmed success and the refresh completes.
+
+An unconfirmed save keeps its original request identifier, body and form state when dismissed and reopened while the same page remains mounted. A visible reminder beside the trigger directs the user to reopen for a safe retry; in-window guidance explains that retry sends the original details even after field edits. This retention is not durable across navigation or reload. Authored validation and permission failures keep friendly guidance in the window and allow revised fields on the next attempt.
+
+The task-window specimen in the sidecar is a static visual sample. Native focus containment, dismissal, reset and request recovery belong to the application runtime, not the specimen.
 
 ### Loading and action feedback
 

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import type { MoneySnapshot } from '@/lib/money'
 import { cents, decimal } from '@/lib/money-math'
 import { money, SaveForm } from './money-form'
+import { TaskDialog } from './task-dialog'
 
 export function GroupSelect({ data, current }: { data: MoneySnapshot; current?: string | null }) {
   return <label>Category group<select name="groupId" defaultValue={current ?? ''}><option value="">Ungrouped</option>{data.groups.filter(row => !row.archived || row.id === current).map(row => <option value={row.id} key={row.id}>{row.name}{row.archived ? ' (archived)' : ''}</option>)}</select></label>
@@ -15,8 +16,8 @@ export function ReorderControls({ data, kind, item, siblings }: { data: MoneySna
 
 export function GroupControls({ data }: { data: MoneySnapshot }) {
   return <section className="panel"><h2>Category groups</h2><p className="muted small">Organize categories into groups such as Essentials or Savings. Changing a group never moves your money. Move or archive its active categories before archiving a group.</p>
-    <SaveForm budgetId={data.budget.id} label="Add group" build={fields => ({ ...fields, action: 'group' })}><label>Group name<input name="name" maxLength={80} required placeholder="Essentials" /></label></SaveForm>
-    {data.groups.map(row => <details key={`${row.id}-${row.version}`}><summary>{row.name} · {row.archived ? 'Archived group' : 'Active group'}</summary><SaveForm budgetId={data.budget.id} label="Save group" build={fields => ({ ...fields, action: 'group-state', id: row.id, version: row.version, inactive: fields.inactive === 'true' })}><label>Group name<input name="name" defaultValue={row.name} maxLength={80} required /></label><label>Group status<select name="inactive" defaultValue={String(row.archived)}><option value="false">Active</option><option value="true">Archived</option></select></label></SaveForm>{!row.archived && <ReorderControls data={data} kind="group" item={row} siblings={data.groups.filter(item => !item.archived)} />}</details>)}
+    <div className="task-actions"><TaskDialog title="Add a group" label="Add group"><SaveForm budgetId={data.budget.id} label="Add group" build={fields => ({ ...fields, action: 'group' })}><label>Group name<input name="name" maxLength={80} required placeholder="Essentials" /></label></SaveForm></TaskDialog></div>
+    {data.groups.map(row => <article className="account-row" key={row.id}><div className="row spread"><h3>{row.name} · {row.archived ? 'Archived group' : 'Active group'}</h3><TaskDialog title={`Manage ${row.name}`} label="Manage group"><SaveForm budgetId={data.budget.id} label="Save group" build={fields => ({ ...fields, action: 'group-state', id: row.id, version: row.version, inactive: fields.inactive === 'true' })}><label>Group name<input name="name" defaultValue={row.name} maxLength={80} required /></label><label>Group status<select name="inactive" defaultValue={String(row.archived)}><option value="false">Active</option><option value="true">Archived</option></select></label></SaveForm></TaskDialog></div>{!row.archived && <ReorderControls data={data} kind="group" item={row} siblings={data.groups.filter(item => !item.archived)} />}</article>)}
   </section>
 }
 
@@ -30,12 +31,12 @@ function FullWorksheet({ data }: { data: MoneySnapshot }) {
   })}</table></div>{!data.categories.length && <p>Add your first category, such as Groceries or Transport.</p>}<p className="muted small">Positive available money carries forward. An uncovered shortfall resets its category to zero next month and reduces ready-to-assign money once. Future allocations reserve {money(data.futureAssigned)}. Archived records remain included in the totals.</p></section>
 }
 
-export function GroupedWorksheet({ data }: { data: MoneySnapshot }) {
+export function GroupedWorksheet({ data, onAssign, onAddCategory }: { data: MoneySnapshot; onAssign: () => void; onAddCategory: () => void }) {
   const groups = [...data.groups.filter(row => !row.archived), { id: null, name: 'Ungrouped', archived: false, note: '' }, ...data.groups.filter(row => row.archived)].filter(group => data.categories.some(row => row.groupId === group.id) || group.id)
   const overspent = data.categories.filter(row => cents(row.available, true) < 0n)
   const shortfall = decimal(overspent.reduce((sum, row) => sum - cents(row.available, true), 0n))
-  return <>{overspent.length > 0 && <div className="notice row spread"><p><strong className="negative">{money(shortfall)} to cover.</strong> {overspent.length === 1 ? overspent[0].name : `${overspent.length} categories`} spent more than available.</p>{data.budget.role !== 'VIEWER' && <a href="#assign-money">Cover overspending</a>}</div>}<div className="row spread purpose-header"><h2>Your plan, by purpose</h2>{data.budget.role !== 'VIEWER' && <a href="#assign-money">Assign money</a>}</div>
-    {!data.categories.length && <div className="notice"><h3>Give your money a place to go</h3><p>Add a category such as Groceries, Transport or an Emergency fund. Your available money stays yours until you assign it.</p>{data.budget.role !== 'VIEWER' && <a href="#add-category">Add your first category</a>}</div>}
+  return <>{overspent.length > 0 && <div className="notice row spread"><p><strong className="negative">{money(shortfall)} to cover.</strong> {overspent.length === 1 ? overspent[0].name : `${overspent.length} categories`} spent more than available.</p>{data.budget.role !== 'VIEWER' && <button type="button" className="secondary" onClick={onAssign}>Cover overspending</button>}</div>}<div className="row spread purpose-header"><h2>Your plan, by purpose</h2>{data.budget.role !== 'VIEWER' && <button type="button" className="secondary" onClick={onAssign}>Assign money</button>}</div>
+    {!data.categories.length && <div className="notice"><h3>Give your money a place to go</h3><p>Add a category such as Groceries, Transport or an Emergency fund. Your available money stays yours until you assign it.</p>{data.budget.role !== 'VIEWER' && <button type="button" onClick={onAddCategory}>Add your first category</button>}</div>}
     <div className="purpose-grid">{groups.map(group => {
       const categories = data.categories.filter(row => row.groupId === group.id)
       const available = decimal(categories.reduce((sum, row) => sum + cents(row.available, true), 0n))
