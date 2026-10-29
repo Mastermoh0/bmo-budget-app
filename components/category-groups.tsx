@@ -20,7 +20,7 @@ export function GroupControls({ data }: { data: MoneySnapshot }) {
   </section>
 }
 
-export function GroupedWorksheet({ data }: { data: MoneySnapshot }) {
+function FullWorksheet({ data }: { data: MoneySnapshot }) {
   const groups = [...data.groups.filter(row => !row.archived), { id: null, name: 'Ungrouped', archived: false }, ...data.groups.filter(row => row.archived)]
   return <section className="panel"><h2>Categories · {data.month}</h2><div className="table-scroll"><table><thead><tr><th>Category</th><th>Carried in</th><th>Assigned</th><th>Activity</th><th>Available</th><th>Target</th></tr></thead>{groups.map(group => {
     const categories = data.categories.filter(row => row.groupId === group.id)
@@ -28,4 +28,24 @@ export function GroupedWorksheet({ data }: { data: MoneySnapshot }) {
     const totals = (['carry', 'assigned', 'activity', 'available'] as const).map(field => decimal(categories.reduce((sum, row) => sum + cents(row[field], true), 0n)))
     return <tbody key={group.id ?? 'ungrouped'} aria-label={group.name}><tr className="group-row"><th scope="rowgroup">{group.name}{group.archived && ' · Archived'}</th>{totals.map((value, index) => <td key={index}>{money(value)}</td>)}<td /></tr>{categories.map(row => <tr key={row.id}><th scope="row">{row.name}{row.archived && <span className="status">Archived</span>}</th><td>{money(row.carry)}</td><td>{money(row.assigned)}</td><td>{money(row.activity)}</td><td className={row.available.startsWith('-') ? 'negative' : ''}>{money(row.available)}{row.available.startsWith('-') && <span className="small"> · Overspent</span>}</td><td className="small">{row.target && !row.target.removed ? <Link href={`/budgets/${data.budget.id}/targets?month=${data.month}`}>{row.target.percent}% · {row.target.kind === 'MONTHLY' ? 'Monthly' : 'By date'}</Link> : '—'}</td></tr>)}{!categories.length && <tr><td colSpan={6} className="muted">No categories in this group yet.</td></tr>}</tbody>
   })}</table></div>{!data.categories.length && <p>Add your first category, such as Groceries or Transport.</p>}<p className="muted small">Positive available money carries forward. An uncovered shortfall resets its category to zero next month and reduces ready-to-assign money once. Future allocations reserve {money(data.futureAssigned)}. Archived records remain included in the totals.</p></section>
+}
+
+export function GroupedWorksheet({ data }: { data: MoneySnapshot }) {
+  const groups = [...data.groups.filter(row => !row.archived), { id: null, name: 'Ungrouped', archived: false, note: '' }, ...data.groups.filter(row => row.archived)].filter(group => data.categories.some(row => row.groupId === group.id) || group.id)
+  const overspent = data.categories.filter(row => cents(row.available, true) < 0n)
+  const shortfall = decimal(overspent.reduce((sum, row) => sum - cents(row.available, true), 0n))
+  return <>{overspent.length > 0 && <div className="notice row spread"><p><strong className="negative">{money(shortfall)} to cover.</strong> {overspent.length === 1 ? overspent[0].name : `${overspent.length} categories`} spent more than available.</p>{data.budget.role !== 'VIEWER' && <a href="#assign-money">Cover overspending</a>}</div>}<div className="row spread purpose-header"><h2>Your plan, by purpose</h2>{data.budget.role !== 'VIEWER' && <a href="#assign-money">Assign money</a>}</div>
+    {!data.categories.length && <div className="notice"><h3>Give your money a place to go</h3><p>Add a category such as Groceries, Transport or an Emergency fund. Your available money stays yours until you assign it.</p>{data.budget.role !== 'VIEWER' && <a href="#add-category">Add your first category</a>}</div>}
+    <div className="purpose-grid">{groups.map(group => {
+      const categories = data.categories.filter(row => row.groupId === group.id)
+      const available = decimal(categories.reduce((sum, row) => sum + cents(row.available, true), 0n))
+      return <section className="purpose-group" key={group.id ?? 'ungrouped'} aria-label={`${group.name} purposes`}><div className="purpose-group-header"><h3>{group.name}{group.archived && ' · Archived'}</h3><span>{money(available)} left</span></div><div className="purpose-categories">{categories.map(row => {
+        const assigned = cents(row.assigned, true) + cents(row.carry, true), spending = -cents(row.activity, true)
+        const percent = assigned > 0n && spending > 0n ? Number((spending > assigned ? assigned : spending) * 100n / assigned) : 0
+        return <details key={row.id} className="purpose-category"><summary><span className="category-name">{row.name}{row.archived && <span className="status">Archived</span>}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg></span><span className="category-figure"><strong className={row.available.startsWith('-') ? 'negative' : ''}>{money(row.available)}</strong><small>{row.available.startsWith('-') ? 'overspent' : 'available'}</small></span><span className="category-bar" aria-hidden="true"><span style={{ width: `${percent}%` }} /></span><span className="category-caption"><span>{money(decimal(spending))} net spending</span><span>{row.target && !row.target.removed ? `${row.target.percent}% of target` : 'View details'}</span></span></summary>
+          <dl className="category-breakdown">{[['Carried in', row.carry], ['Assigned this month', row.assigned], ['Net activity', row.activity], ['Available', row.available]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{money(value)}</dd></div>)}</dl>{row.note && <p className="purpose-note">{row.note}</p>}{row.target && !row.target.removed && <p className="small"><Link href={`/budgets/${data.budget.id}/targets?month=${data.month}`}>View savings target</Link></p>}
+        </details>
+      })}</div>{!categories.length && <p className="purpose-note">No categories in this group yet.</p>}{group.note && <p className="purpose-note">{group.note}</p>}</section>
+    })}</div>
+    <details className="worksheet-details"><summary>View detailed worksheet</summary><FullWorksheet data={data} /></details></>
 }

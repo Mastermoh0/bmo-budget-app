@@ -1,0 +1,664 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-29T15:13:36.792235+00:00",
+  "title": "Design System: Bimo Canvas and Night Desk",
+  "extensions": {
+    "colorMeta": {
+      "light-ground": {
+        "role": "neutral",
+        "displayName": "Canvas Outer frame",
+        "tonalRamp": [
+          "oklch(15.00% 0.01032 247.93)",
+          "oklch(26.43% 0.01032 247.93)",
+          "oklch(37.86% 0.01032 247.93)",
+          "oklch(49.29% 0.01032 247.93)",
+          "oklch(60.71% 0.01032 247.93)",
+          "oklch(72.14% 0.01032 247.93)",
+          "oklch(83.57% 0.01032 247.93)",
+          "oklch(95.00% 0.01032 247.93)"
+        ]
+      },
+      "light-surface": {
+        "role": "neutral",
+        "displayName": "Canvas Workspace surface",
+        "tonalRamp": [
+          "oklch(15.00% 0.00000 0.00)",
+          "oklch(26.43% 0.00000 0.00)",
+          "oklch(37.86% 0.00000 0.00)",
+          "oklch(49.29% 0.00000 0.00)",
+          "oklch(60.71% 0.00000 0.00)",
+          "oklch(72.14% 0.00000 0.00)",
+          "oklch(83.57% 0.00000 0.00)",
+          "oklch(95.00% 0.00000 0.00)"
+        ]
+      },
+      "light-raised": {
+        "role": "neutral",
+        "displayName": "Canvas Raised wash",
+        "tonalRamp": [
+          "oklch(15.00% 0.00623 255.47)",
+          "oklch(26.43% 0.00623 255.47)",
+          "oklch(37.86% 0.00623 255.47)",
+          "oklch(49.29% 0.00623 255.47)",
+          "oklch(60.71% 0.00623 255.47)",
+          "oklch(72.14% 0.00623 255.47)",
+          "oklch(83.57% 0.00623 255.47)",
+          "oklch(95.00% 0.00623 255.47)"
+        ]
+      },
+      "light-text": {
+        "role": "neutral",
+        "displayName": "Canvas Reading text",
+        "tonalRamp": [
+          "oklch(15.00% 0.05485 251.48)",
+          "oklch(26.43% 0.05485 251.48)",
+          "oklch(37.86% 0.05485 251.48)",
+          "oklch(49.29% 0.05485 251.48)",
+          "oklch(60.71% 0.05485 251.48)",
+          "oklch(72.14% 0.05485 251.48)",
+          "oklch(83.57% 0.05485 251.48)",
+          "oklch(95.00% 0.05485 251.48)"
+        ]
+      },
+      "light-muted": {
+        "role": "neutral",
+        "displayName": "Canvas Supporting text",
+        "tonalRamp": [
+          "oklch(15.00% 0.05130 252.80)",
+          "oklch(26.43% 0.05130 252.80)",
+          "oklch(37.86% 0.05130 252.80)",
+          "oklch(49.29% 0.05130 252.80)",
+          "oklch(60.71% 0.05130 252.80)",
+          "oklch(72.14% 0.05130 252.80)",
+          "oklch(83.57% 0.05130 252.80)",
+          "oklch(95.00% 0.05130 252.80)"
+        ]
+      },
+      "light-line": {
+        "role": "neutral",
+        "displayName": "Canvas Fine divider",
+        "tonalRamp": [
+          "oklch(15.00% 0.01786 253.35)",
+          "oklch(26.43% 0.01786 253.35)",
+          "oklch(37.86% 0.01786 253.35)",
+          "oklch(49.29% 0.01786 253.35)",
+          "oklch(60.71% 0.01786 253.35)",
+          "oklch(72.14% 0.01786 253.35)",
+          "oklch(83.57% 0.01786 253.35)",
+          "oklch(95.00% 0.01786 253.35)"
+        ]
+      },
+      "light-control": {
+        "role": "neutral",
+        "displayName": "Canvas Control boundary",
+        "tonalRamp": [
+          "oklch(15.00% 0.04695 252.81)",
+          "oklch(26.43% 0.04695 252.81)",
+          "oklch(37.86% 0.04695 252.81)",
+          "oklch(49.29% 0.04695 252.81)",
+          "oklch(60.71% 0.04695 252.81)",
+          "oklch(72.14% 0.04695 252.81)",
+          "oklch(83.57% 0.04695 252.81)",
+          "oklch(95.00% 0.04695 252.81)"
+        ]
+      },
+      "light-active": {
+        "role": "neutral",
+        "displayName": "Canvas Selected wash",
+        "tonalRamp": [
+          "oklch(15.00% 0.01428 254.61)",
+          "oklch(26.43% 0.01428 254.61)",
+          "oklch(37.86% 0.01428 254.61)",
+          "oklch(49.29% 0.01428 254.61)",
+          "oklch(60.71% 0.01428 254.61)",
+          "oklch(72.14% 0.01428 254.61)",
+          "oklch(83.57% 0.01428 254.61)",
+          "oklch(95.00% 0.01428 254.61)"
+        ]
+      },
+      "light-accent": {
+        "role": "primary",
+        "displayName": "Canvas Accent",
+        "tonalRamp": [
+          "oklch(15.00% 0.14837 259.23)",
+          "oklch(26.43% 0.14837 259.23)",
+          "oklch(37.86% 0.14837 259.23)",
+          "oklch(49.29% 0.14837 259.23)",
+          "oklch(60.71% 0.14837 259.23)",
+          "oklch(72.14% 0.14837 259.23)",
+          "oklch(83.57% 0.14837 259.23)",
+          "oklch(95.00% 0.14837 259.23)"
+        ]
+      },
+      "light-accent-soft": {
+        "role": "primary",
+        "displayName": "Canvas Accent wash",
+        "tonalRamp": [
+          "oklch(15.00% 0.01781 261.34)",
+          "oklch(26.43% 0.01781 261.34)",
+          "oklch(37.86% 0.01781 261.34)",
+          "oklch(49.29% 0.01781 261.34)",
+          "oklch(60.71% 0.01781 261.34)",
+          "oklch(72.14% 0.01781 261.34)",
+          "oklch(83.57% 0.01781 261.34)",
+          "oklch(95.00% 0.01781 261.34)"
+        ]
+      },
+      "light-positive": {
+        "role": "secondary",
+        "displayName": "Canvas Success ink",
+        "tonalRamp": [
+          "oklch(15.00% 0.08132 160.75)",
+          "oklch(26.43% 0.08132 160.75)",
+          "oklch(37.86% 0.08132 160.75)",
+          "oklch(49.29% 0.08132 160.75)",
+          "oklch(60.71% 0.08132 160.75)",
+          "oklch(72.14% 0.08132 160.75)",
+          "oklch(83.57% 0.08132 160.75)",
+          "oklch(95.00% 0.08132 160.75)"
+        ]
+      },
+      "light-positive-soft": {
+        "role": "secondary",
+        "displayName": "Canvas Success wash",
+        "tonalRamp": [
+          "oklch(15.00% 0.01319 159.92)",
+          "oklch(26.43% 0.01319 159.92)",
+          "oklch(37.86% 0.01319 159.92)",
+          "oklch(49.29% 0.01319 159.92)",
+          "oklch(60.71% 0.01319 159.92)",
+          "oklch(72.14% 0.01319 159.92)",
+          "oklch(83.57% 0.01319 159.92)",
+          "oklch(95.00% 0.01319 159.92)"
+        ]
+      },
+      "light-negative": {
+        "role": "secondary",
+        "displayName": "Canvas Error ink",
+        "tonalRamp": [
+          "oklch(15.00% 0.15442 19.60)",
+          "oklch(26.43% 0.15442 19.60)",
+          "oklch(37.86% 0.15442 19.60)",
+          "oklch(49.29% 0.15442 19.60)",
+          "oklch(60.71% 0.15442 19.60)",
+          "oklch(72.14% 0.15442 19.60)",
+          "oklch(83.57% 0.15442 19.60)",
+          "oklch(95.00% 0.15442 19.60)"
+        ]
+      },
+      "light-negative-soft": {
+        "role": "secondary",
+        "displayName": "Canvas Error wash",
+        "tonalRamp": [
+          "oklch(15.00% 0.01535 7.49)",
+          "oklch(26.43% 0.01535 7.49)",
+          "oklch(37.86% 0.01535 7.49)",
+          "oklch(49.29% 0.01535 7.49)",
+          "oklch(60.71% 0.01535 7.49)",
+          "oklch(72.14% 0.01535 7.49)",
+          "oklch(83.57% 0.01535 7.49)",
+          "oklch(95.00% 0.01535 7.49)"
+        ]
+      },
+      "light-primary": {
+        "role": "primary",
+        "displayName": "Canvas Primary action",
+        "tonalRamp": [
+          "oklch(15.00% 0.05485 251.48)",
+          "oklch(26.43% 0.05485 251.48)",
+          "oklch(37.86% 0.05485 251.48)",
+          "oklch(49.29% 0.05485 251.48)",
+          "oklch(60.71% 0.05485 251.48)",
+          "oklch(72.14% 0.05485 251.48)",
+          "oklch(83.57% 0.05485 251.48)",
+          "oklch(95.00% 0.05485 251.48)"
+        ]
+      },
+      "light-on-primary": {
+        "role": "primary",
+        "displayName": "Canvas Primary foreground",
+        "tonalRamp": [
+          "oklch(15.00% 0.00000 0.00)",
+          "oklch(26.43% 0.00000 0.00)",
+          "oklch(37.86% 0.00000 0.00)",
+          "oklch(49.29% 0.00000 0.00)",
+          "oklch(60.71% 0.00000 0.00)",
+          "oklch(72.14% 0.00000 0.00)",
+          "oklch(83.57% 0.00000 0.00)",
+          "oklch(95.00% 0.00000 0.00)"
+        ]
+      },
+      "dark-ground": {
+        "role": "neutral",
+        "displayName": "Night Desk Outer frame",
+        "tonalRamp": [
+          "oklch(15.00% 0.00000 0.00)",
+          "oklch(26.43% 0.00000 0.00)",
+          "oklch(37.86% 0.00000 0.00)",
+          "oklch(49.29% 0.00000 0.00)",
+          "oklch(60.71% 0.00000 0.00)",
+          "oklch(72.14% 0.00000 0.00)",
+          "oklch(83.57% 0.00000 0.00)",
+          "oklch(95.00% 0.00000 0.00)"
+        ]
+      },
+      "dark-surface": {
+        "role": "neutral",
+        "displayName": "Night Desk Workspace surface",
+        "tonalRamp": [
+          "oklch(15.00% 0.00000 0.00)",
+          "oklch(26.43% 0.00000 0.00)",
+          "oklch(37.86% 0.00000 0.00)",
+          "oklch(49.29% 0.00000 0.00)",
+          "oklch(60.71% 0.00000 0.00)",
+          "oklch(72.14% 0.00000 0.00)",
+          "oklch(83.57% 0.00000 0.00)",
+          "oklch(95.00% 0.00000 0.00)"
+        ]
+      },
+      "dark-raised": {
+        "role": "neutral",
+        "displayName": "Night Desk Raised wash",
+        "tonalRamp": [
+          "oklch(15.00% 0.00000 0.00)",
+          "oklch(26.43% 0.00000 0.00)",
+          "oklch(37.86% 0.00000 0.00)",
+          "oklch(49.29% 0.00000 0.00)",
+          "oklch(60.71% 0.00000 0.00)",
+          "oklch(72.14% 0.00000 0.00)",
+          "oklch(83.57% 0.00000 0.00)",
+          "oklch(95.00% 0.00000 0.00)"
+        ]
+      },
+      "dark-text": {
+        "role": "neutral",
+        "displayName": "Night Desk Reading text",
+        "tonalRamp": [
+          "oklch(15.00% 0.00673 97.35)",
+          "oklch(26.43% 0.00673 97.35)",
+          "oklch(37.86% 0.00673 97.35)",
+          "oklch(49.29% 0.00673 97.35)",
+          "oklch(60.71% 0.00673 97.35)",
+          "oklch(72.14% 0.00673 97.35)",
+          "oklch(83.57% 0.00673 97.35)",
+          "oklch(95.00% 0.00673 97.35)"
+        ]
+      },
+      "dark-muted": {
+        "role": "neutral",
+        "displayName": "Night Desk Supporting text",
+        "tonalRamp": [
+          "oklch(15.00% 0.00850 98.92)",
+          "oklch(26.43% 0.00850 98.92)",
+          "oklch(37.86% 0.00850 98.92)",
+          "oklch(49.29% 0.00850 98.92)",
+          "oklch(60.71% 0.00850 98.92)",
+          "oklch(72.14% 0.00850 98.92)",
+          "oklch(83.57% 0.00850 98.92)",
+          "oklch(95.00% 0.00850 98.92)"
+        ]
+      },
+      "dark-line": {
+        "role": "neutral",
+        "displayName": "Night Desk Fine divider",
+        "tonalRamp": [
+          "oklch(15.00% 0.00519 106.68)",
+          "oklch(26.43% 0.00519 106.68)",
+          "oklch(37.86% 0.00519 106.68)",
+          "oklch(49.29% 0.00519 106.68)",
+          "oklch(60.71% 0.00519 106.68)",
+          "oklch(72.14% 0.00519 106.68)",
+          "oklch(83.57% 0.00519 106.68)",
+          "oklch(95.00% 0.00519 106.68)"
+        ]
+      },
+      "dark-control": {
+        "role": "neutral",
+        "displayName": "Night Desk Control boundary",
+        "tonalRamp": [
+          "oklch(15.00% 0.01202 106.77)",
+          "oklch(26.43% 0.01202 106.77)",
+          "oklch(37.86% 0.01202 106.77)",
+          "oklch(49.29% 0.01202 106.77)",
+          "oklch(60.71% 0.01202 106.77)",
+          "oklch(72.14% 0.01202 106.77)",
+          "oklch(83.57% 0.01202 106.77)",
+          "oklch(95.00% 0.01202 106.77)"
+        ]
+      },
+      "dark-active": {
+        "role": "neutral",
+        "displayName": "Night Desk Selected wash",
+        "tonalRamp": [
+          "oklch(15.00% 0.00527 106.70)",
+          "oklch(26.43% 0.00527 106.70)",
+          "oklch(37.86% 0.00527 106.70)",
+          "oklch(49.29% 0.00527 106.70)",
+          "oklch(60.71% 0.00527 106.70)",
+          "oklch(72.14% 0.00527 106.70)",
+          "oklch(83.57% 0.00527 106.70)",
+          "oklch(95.00% 0.00527 106.70)"
+        ]
+      },
+      "dark-accent": {
+        "role": "primary",
+        "displayName": "Night Desk Accent",
+        "tonalRamp": [
+          "oklch(15.00% 0.09809 81.36)",
+          "oklch(26.43% 0.09809 81.36)",
+          "oklch(37.86% 0.09809 81.36)",
+          "oklch(49.29% 0.09809 81.36)",
+          "oklch(60.71% 0.09809 81.36)",
+          "oklch(72.14% 0.09809 81.36)",
+          "oklch(83.57% 0.09809 81.36)",
+          "oklch(95.00% 0.09809 81.36)"
+        ]
+      },
+      "dark-accent-soft": {
+        "role": "primary",
+        "displayName": "Night Desk Accent wash",
+        "tonalRamp": [
+          "oklch(15.00% 0.02123 91.81)",
+          "oklch(26.43% 0.02123 91.81)",
+          "oklch(37.86% 0.02123 91.81)",
+          "oklch(49.29% 0.02123 91.81)",
+          "oklch(60.71% 0.02123 91.81)",
+          "oklch(72.14% 0.02123 91.81)",
+          "oklch(83.57% 0.02123 91.81)",
+          "oklch(95.00% 0.02123 91.81)"
+        ]
+      },
+      "dark-positive": {
+        "role": "secondary",
+        "displayName": "Night Desk Success ink",
+        "tonalRamp": [
+          "oklch(15.00% 0.03543 134.54)",
+          "oklch(26.43% 0.03543 134.54)",
+          "oklch(37.86% 0.03543 134.54)",
+          "oklch(49.29% 0.03543 134.54)",
+          "oklch(60.71% 0.03543 134.54)",
+          "oklch(72.14% 0.03543 134.54)",
+          "oklch(83.57% 0.03543 134.54)",
+          "oklch(95.00% 0.03543 134.54)"
+        ]
+      },
+      "dark-positive-soft": {
+        "role": "secondary",
+        "displayName": "Night Desk Success wash",
+        "tonalRamp": [
+          "oklch(15.00% 0.02688 155.31)",
+          "oklch(26.43% 0.02688 155.31)",
+          "oklch(37.86% 0.02688 155.31)",
+          "oklch(49.29% 0.02688 155.31)",
+          "oklch(60.71% 0.02688 155.31)",
+          "oklch(72.14% 0.02688 155.31)",
+          "oklch(83.57% 0.02688 155.31)",
+          "oklch(95.00% 0.02688 155.31)"
+        ]
+      },
+      "dark-negative": {
+        "role": "secondary",
+        "displayName": "Night Desk Error ink",
+        "tonalRamp": [
+          "oklch(15.00% 0.10463 19.71)",
+          "oklch(26.43% 0.10463 19.71)",
+          "oklch(37.86% 0.10463 19.71)",
+          "oklch(49.29% 0.10463 19.71)",
+          "oklch(60.71% 0.10463 19.71)",
+          "oklch(72.14% 0.10463 19.71)",
+          "oklch(83.57% 0.10463 19.71)",
+          "oklch(95.00% 0.10463 19.71)"
+        ]
+      },
+      "dark-negative-soft": {
+        "role": "secondary",
+        "displayName": "Night Desk Error wash",
+        "tonalRamp": [
+          "oklch(15.00% 0.02909 12.07)",
+          "oklch(26.43% 0.02909 12.07)",
+          "oklch(37.86% 0.02909 12.07)",
+          "oklch(49.29% 0.02909 12.07)",
+          "oklch(60.71% 0.02909 12.07)",
+          "oklch(72.14% 0.02909 12.07)",
+          "oklch(83.57% 0.02909 12.07)",
+          "oklch(95.00% 0.02909 12.07)"
+        ]
+      },
+      "dark-primary": {
+        "role": "primary",
+        "displayName": "Night Desk Primary action",
+        "tonalRamp": [
+          "oklch(15.00% 0.01402 88.69)",
+          "oklch(26.43% 0.01402 88.69)",
+          "oklch(37.86% 0.01402 88.69)",
+          "oklch(49.29% 0.01402 88.69)",
+          "oklch(60.71% 0.01402 88.69)",
+          "oklch(72.14% 0.01402 88.69)",
+          "oklch(83.57% 0.01402 88.69)",
+          "oklch(95.00% 0.01402 88.69)"
+        ]
+      },
+      "dark-on-primary": {
+        "role": "primary",
+        "displayName": "Night Desk Primary foreground",
+        "tonalRamp": [
+          "oklch(15.00% 0.00000 0.00)",
+          "oklch(26.43% 0.00000 0.00)",
+          "oklch(37.86% 0.00000 0.00)",
+          "oklch(49.29% 0.00000 0.00)",
+          "oklch(60.71% 0.00000 0.00)",
+          "oklch(72.14% 0.00000 0.00)",
+          "oklch(83.57% 0.00000 0.00)",
+          "oklch(95.00% 0.00000 0.00)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Page headline",
+        "purpose": "Page titles; auth and narrow overrides are documented in DESIGN.md."
+      },
+      "title": {
+        "displayName": "Section title",
+        "purpose": "Ordinary second-level headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default reading text."
+      },
+      "label": {
+        "displayName": "Field label",
+        "purpose": "Visible labels above fields."
+      },
+      "financial-summary": {
+        "displayName": "Financial summary",
+        "purpose": "Large runtime figures with tabular numerals applied by the component."
+      },
+      "supporting": {
+        "displayName": "Supporting text",
+        "purpose": "Compact help and secondary detail."
+      }
+    },
+    "shadows": [
+      {
+        "name": "pressed-action",
+        "value": "inset 0 2px 4px #0003",
+        "purpose": "Active buttons and button links, with translateY(1px); removed when disabled."
+      }
+    ],
+    "motion": [
+      {
+        "name": "button-background-shadow",
+        "value": "160ms ease-out",
+        "purpose": "Background and shadow state changes."
+      },
+      {
+        "name": "button-transform",
+        "value": "100ms ease-out",
+        "purpose": "Pressed translation."
+      },
+      {
+        "name": "appearance-thumb",
+        "value": "180ms cubic-bezier(.16,1,.3,1)",
+        "purpose": "10px switch-thumb translation."
+      },
+      {
+        "name": "spinner",
+        "value": ".8s linear infinite",
+        "purpose": "Action spinner rotation."
+      },
+      {
+        "name": "navigation-pulse",
+        "value": "1.2s ease-in-out infinite",
+        "purpose": "Pending link hint opacity."
+      },
+      {
+        "name": "skeleton-pulse",
+        "value": "1.5s ease-in-out infinite",
+        "purpose": "Opacity moves between 1 and .5."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "animation:none!important;transition:none!important;scroll-behavior:auto!important",
+        "purpose": "Applied to all elements and pseudo-elements under prefers-reduced-motion:reduce."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "workspace-inset",
+        "value": "1360px"
+      },
+      {
+        "name": "intermediate",
+        "value": "900px"
+      },
+      {
+        "name": "narrow-fallback",
+        "value": "650px"
+      }
+    ],
+    "notes": [
+      "Tonal ramps are synthesized OKLCH panel previews, not additional production palette tokens. Frontmatter contains the actual source colours.",
+      "Component samples use CSS custom properties with Canvas fallback values so they render independently and inherit Night Desk roles when those variables are supplied. Static switch and navigation samples do not emulate the application runtime.",
+      "Demo figures in the purpose snippet are explicitly labelled; production figures always come from runtime records."
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary action",
+      "kind": "button",
+      "description": "Filled action with immediate pressed and focus feedback.",
+      "html": "<button class=\"ds-button\">Assign money</button>",
+      "css": ".ds-button{font-family:Manrope,system-ui,sans-serif;position:relative;display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:40px;width:fit-content;max-width:100%;padding:10px 16px;border:1px solid var(--primary,#233b55);border-radius:6px;background:var(--primary,#233b55);color:var(--on-primary,#fff);font-size:13px;font-weight:750;text-decoration:none;cursor:pointer;transition:background 160ms ease-out,box-shadow 160ms ease-out,transform 100ms ease-out}.ds-button:hover{background:var(--accent,#285fb5);border-color:var(--accent,#285fb5);color:var(--on-primary,#fff)}.ds-button:active{transform:translateY(1px);box-shadow:inset 0 2px 4px #0003}.ds-button:focus-visible{outline:3px solid var(--accent,#285fb5);outline-offset:4px}.ds-button:disabled{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none}.ds-button[aria-busy=true]{opacity:.85;cursor:progress}@media(prefers-reduced-motion:reduce){.ds-button{transition:none}}",
+      "refersTo": "button-primary-light"
+    },
+    {
+      "name": "Secondary action",
+      "kind": "button",
+      "description": "Outlined action used for secondary and account controls.",
+      "html": "<button class=\"ds-button ds-secondary\">Sign out all devices</button>",
+      "css": ".ds-button{font-family:Manrope,system-ui,sans-serif;position:relative;display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:40px;width:fit-content;max-width:100%;padding:10px 16px;border:1px solid var(--primary,#233b55);border-radius:6px;background:var(--primary,#233b55);color:var(--on-primary,#fff);font-size:13px;font-weight:750;text-decoration:none;cursor:pointer;transition:background 160ms ease-out,box-shadow 160ms ease-out,transform 100ms ease-out}.ds-button:hover{background:var(--accent,#285fb5);border-color:var(--accent,#285fb5);color:var(--on-primary,#fff)}.ds-button:active{transform:translateY(1px);box-shadow:inset 0 2px 4px #0003}.ds-button:focus-visible{outline:3px solid var(--accent,#285fb5);outline-offset:4px}.ds-button:disabled{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none}.ds-button[aria-busy=true]{opacity:.85;cursor:progress}@media(prefers-reduced-motion:reduce){.ds-button{transition:none}}.ds-secondary{background:var(--surface,#fff);color:var(--text,#233b55);border-color:var(--control,#7389a3)}.ds-secondary:hover{background:var(--raised,#f4f7fb);color:var(--text,#233b55);border-color:var(--text,#233b55)}",
+      "refersTo": "button-secondary-light"
+    },
+    {
+      "name": "Danger action",
+      "kind": "button",
+      "description": "The implemented danger variant; keep explicit action wording.",
+      "html": "<button class=\"ds-button ds-danger\">Revoke access</button>",
+      "css": ".ds-button{font-family:Manrope,system-ui,sans-serif;position:relative;display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:40px;width:fit-content;max-width:100%;padding:10px 16px;border:1px solid var(--primary,#233b55);border-radius:6px;background:var(--primary,#233b55);color:var(--on-primary,#fff);font-size:13px;font-weight:750;text-decoration:none;cursor:pointer;transition:background 160ms ease-out,box-shadow 160ms ease-out,transform 100ms ease-out}.ds-button:hover{background:var(--accent,#285fb5);border-color:var(--accent,#285fb5);color:var(--on-primary,#fff)}.ds-button:active{transform:translateY(1px);box-shadow:inset 0 2px 4px #0003}.ds-button:focus-visible{outline:3px solid var(--accent,#285fb5);outline-offset:4px}.ds-button:disabled{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none}.ds-button[aria-busy=true]{opacity:.85;cursor:progress}@media(prefers-reduced-motion:reduce){.ds-button{transition:none}}.ds-danger{background:var(--negative,#a52e3a);color:var(--surface,#fff);border-color:var(--negative,#a52e3a)}"
+    },
+    {
+      "name": "Labelled field",
+      "kind": "input",
+      "description": "Visible label and a distinct control boundary.",
+      "html": "<label class=\"ds-label\">Amount (NGN)<input class=\"ds-input\" inputmode=\"decimal\" placeholder=\"0.00\" /></label>",
+      "css": ".ds-label{font-family:Manrope,system-ui,sans-serif;display:grid;gap:7px;font-size:13px;font-weight:650;color:var(--text,#233b55)}.ds-input{font-family:Manrope,system-ui,sans-serif;width:100%;min-width:0;padding:10px 12px;border:1px solid var(--control,#7389a3);border-radius:6px;color:var(--text,#233b55);background:var(--surface,#fff);min-height:42px;caret-color:var(--accent,#285fb5)}.ds-input::placeholder{color:var(--muted,#506782);opacity:1}.ds-input[readonly]{background:var(--raised,#f4f7fb)}.ds-input:focus-visible{outline:3px solid var(--accent,#285fb5);outline-offset:4px}",
+      "refersTo": "input-light"
+    },
+    {
+      "name": "Budget navigation",
+      "kind": "nav",
+      "description": "Current page is explicit; pending dots supplement route loading.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Budget\"><a href=\"#budget\" aria-current=\"page\">Budget</a><a href=\"#transactions\">Transactions<span class=\"ds-hint\" aria-hidden=\"true\"></span></a><a href=\"#reports\">Reports</a></nav>",
+      "css": ".ds-nav{font-family:Manrope,system-ui,sans-serif;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 28px;border-bottom:1px solid var(--line,#dbe4ef);padding:0 0 14px;color:var(--text,#233b55)}.ds-nav a{font-size:12px;text-decoration:none;padding:8px 12px;border-radius:5px;position:relative;color:inherit}.ds-nav a:hover{background:var(--raised,#f4f7fb);color:var(--accent,#285fb5)}.ds-nav a[aria-current=page]{background:var(--active,#e6edf6);color:var(--text,#233b55);font-weight:800}.ds-nav a:focus-visible{outline:3px solid var(--accent,#285fb5);outline-offset:4px}.ds-hint{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent,#285fb5);opacity:0;margin-left:5px}.ds-hint.ds-pending{opacity:1;animation:ds-nav-pulse 1.2s ease-in-out infinite}@keyframes ds-nav-pulse{0%,100%{opacity:1}50%{opacity:.5}}@media(prefers-reduced-motion:reduce){.ds-hint{animation:none}}"
+    },
+    {
+      "name": "Status tag",
+      "kind": "chip",
+      "description": "A noninteractive role/archive label.",
+      "html": "<span class=\"ds-status\">OWNER</span>",
+      "css": ".ds-status{font-family:Manrope,system-ui,sans-serif;display:inline-flex;align-items:center;background:var(--raised,#f4f7fb);color:var(--muted,#506782);font-size:11px;font-weight:650;padding:3px 8px;border-radius:5px;vertical-align:middle}",
+      "refersTo": "status-light"
+    },
+    {
+      "name": "Open section",
+      "kind": "card",
+      "description": "The implemented container uses a top divider rather than a resting shadow.",
+      "html": "<section class=\"ds-panel\"><h2>Profile</h2><p>Keep your display name up to date.</p></section>",
+      "css": ".ds-panel{font-family:Manrope,system-ui,sans-serif;padding:26px 0;margin:12px 0 0;border-top:1px solid var(--line,#dbe4ef);min-width:0;color:var(--text,#233b55)}.ds-panel h2{line-height:1.35;font-size:17px;letter-spacing:-.02em;font-weight:750;margin:0 0 16px}.ds-panel p{margin:8px 0 0;max-width:76ch;font-size:14px;line-height:1.6}"
+    },
+    {
+      "name": "Purpose category",
+      "kind": "custom",
+      "description": "Native disclosure preserves context while exposing exact breakdown; figures here are explicitly demo-only.",
+      "html": "<details class=\"ds-purpose\"><summary><span class=\"ds-name\">Groceries<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m9 5 7 7-7 7\" /></svg></span><span class=\"ds-figure\"><strong>₦0.00</strong><small>available</small></span><span class=\"ds-bar\" aria-hidden=\"true\"><span></span></span><span class=\"ds-caption\">View details · demonstration only</span></summary><dl class=\"ds-breakdown\"><div><dt>Available</dt><dd>₦0.00</dd></div></dl></details>",
+      "css": ".ds-purpose{font-family:Manrope,system-ui,sans-serif;min-width:0;padding:0;border-bottom:1px solid var(--line,#dbe4ef);color:var(--text,#233b55)}.ds-purpose summary{list-style:none;padding:20px 0;display:grid;gap:14px;font-weight:500;cursor:pointer}.ds-purpose summary::-webkit-details-marker{display:none}.ds-purpose summary:focus-visible{outline:3px solid var(--accent,#285fb5);outline-offset:4px}.ds-name{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px}.ds-name svg{width:15px;height:15px;stroke:var(--muted,#506782);fill:none;stroke-width:1.5}.ds-purpose[open] .ds-name svg{transform:rotate(90deg)}.ds-figure{display:flex;align-items:baseline;justify-content:space-between;gap:10px}.ds-figure strong{font-size:24px;line-height:1.4;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.ds-figure small{font-size:10px;color:var(--muted,#506782)}.ds-bar{height:4px;background:var(--active,#e6edf6);border-radius:4px;overflow:hidden}.ds-bar>span{display:block;height:100%;width:0;background:var(--accent,#285fb5);border-radius:inherit}.ds-caption{font-size:11px;color:var(--muted,#506782)}.ds-breakdown{margin:0 0 16px}.ds-breakdown div{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:12px}.ds-breakdown dd{margin:0;font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Appearance switch",
+      "kind": "custom",
+      "description": "Visual specimen of the implemented switch; runtime React performs persistence and root theme updates.",
+      "html": "<button type=\"button\" class=\"ds-appearance\" role=\"switch\" aria-checked=\"false\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10Z\" /></svg>Dark mode<span class=\"ds-track\" aria-hidden=\"true\"><span></span></span></button>",
+      "css": ".ds-appearance{font-family:Manrope,system-ui,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 12px;border:1px solid var(--control,#7389a3);border-radius:6px;background:var(--surface,#fff);color:var(--text,#233b55);min-width:142px;min-height:40px;font-size:12px;font-weight:750;cursor:pointer}.ds-appearance:hover{background:var(--raised,#f4f7fb);border-color:var(--text,#233b55)}.ds-appearance:active{transform:translateY(1px);box-shadow:inset 0 2px 4px #0003}.ds-appearance:focus-visible{outline:3px solid var(--accent,#285fb5);outline-offset:4px}.ds-appearance svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5}.ds-track{width:24px;height:14px;border-radius:12px;padding:3px;background:var(--control,#7389a3);display:block}.ds-track>span{width:8px;height:8px;border-radius:50%;display:block;background:var(--surface,#fff);transition:transform 180ms cubic-bezier(.16,1,.3,1)}.ds-appearance[aria-checked=true] .ds-track{background:var(--accent,#285fb5)}.ds-appearance[aria-checked=true] .ds-track>span{transform:translateX(10px);background:var(--ground,#eaf0f6)}@media(prefers-reduced-motion:reduce){.ds-track>span{transition:none}}"
+    },
+    {
+      "name": "Route skeleton",
+      "kind": "custom",
+      "description": "One status announcement with decorative placeholders; no invented balance.",
+      "html": "<div class=\"ds-skeleton\" role=\"status\" aria-busy=\"true\" aria-label=\"Loading settings\"><span class=\"ds-sr\">Loading settings. Your information will appear here.</span><div aria-hidden=\"true\"><div class=\"ds-block ds-title\"></div><div class=\"ds-block ds-subtitle\"></div><div class=\"ds-section\"><div class=\"ds-block ds-field\"></div><div class=\"ds-block ds-field\"></div></div></div></div>",
+      "css": ".ds-skeleton{min-height:480px}.ds-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}.ds-block{background:var(--active,#e6edf6);border-radius:4px;min-height:14px;animation:ds-skeleton-pulse 1.5s ease-in-out infinite}.ds-title{height:32px;width:250px;max-width:65vw;margin-bottom:12px}.ds-subtitle{width:200px;max-width:65vw;height:16px}.ds-section{padding-block:24px;border-top:1px solid var(--line,#dbe4ef);margin-top:28px}.ds-field{width:100%;height:40px;margin-top:28px}@keyframes ds-skeleton-pulse{0%,100%{opacity:1}50%{opacity:.5}}@media(prefers-reduced-motion:reduce){.ds-block{animation:none}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Canvas / Night Desk",
+    "overview": "An open workspace gives available money a purpose. Canvas surrounds a white inset surface with a cool blue frame; Night Desk brings the same geometry into charcoal, warm text and amber. Manrope, fine dividers and spacious purpose groups make a working budget feel ordered and approachable.\n\nThe interface is built from the accepted Canvas prototype, with runtime records supplying every financial figure. Colour changes carry through navigation, forms, reports and security settings without changing the user's place or financial work. The authored Bimo mark and self-hosted typeface supply the identity; external imagery is not part of this implementation.",
+    "keyCharacteristics": [
+      "A framed workspace with top navigation and a quiet footer.",
+      "Open, divided sections and grouped purposes with expandable financial details.",
+      "Exact NGN figures, tabular numerals and visible status language.",
+      "Shared geometry across light and dark appearances.",
+      "Immediate pending feedback, structural loading placeholders and recoverable errors."
+    ],
+    "rules": [
+      {
+        "name": "The Shared Geometry Rule",
+        "body": "Change appearance through the role tokens; keep layout, information order and form state intact.",
+        "section": "colors"
+      },
+      {
+        "name": "The Exact Figures Rule",
+        "body": "Use formatted runtime NGN values with two decimal places and tabular numerals in financial figures, tables and breakdowns. Placeholder blocks carry no sample balances.",
+        "section": "typography"
+      },
+      {
+        "name": "The Open Surface Rule",
+        "body": "Preserve the existing open sections and divider-based purpose groups when extending these screens; do not turn them into a stack of elevated cards.",
+        "section": "elevation & depth"
+      }
+    ],
+    "dos": [
+      "**Do** use the existing semantic colour roles for both appearances and preserve shared geometry.",
+      "**Do** show exact runtime balances and distinguish overspending with words as well as colour.",
+      "**Do** retain work during asynchronous actions and explain what a retry will send.",
+      "**Do** pair decorative loading with one accessible status and honour reduced motion.",
+      "**Do** reuse the self-hosted Manrope face and authored inline Bimo mark."
+    ],
+    "donts": [
+      "**Don't** copy fixture amounts from a prototype or review screenshot into product defaults.",
+      "**Don't** replace open purpose groups with elevated card stacks on these screens.",
+      "**Don't** remove visible field labels, keyboard focus or textual error guidance.",
+      "**Don't** imply an unavailable provider, mailbox connection or account-deletion feature is ready.",
+      "**Don't** describe the narrow fallback as the separately planned mobile composition."
+    ]
+  }
+}

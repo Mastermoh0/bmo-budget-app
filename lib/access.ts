@@ -14,6 +14,6 @@ export function json(data: unknown, status = 200) {
 }
 
 export function apiFailure(error: unknown) {
-  if (error instanceof AccessError) return json({ error: error.message }, error.status)
+  if (error instanceof AccessError) return json({ error: error.message, code: 'BIMO_REQUEST_ERROR' }, error.status)
   return json({ error: 'The request could not be completed. Please try again.' }, 500)
 }

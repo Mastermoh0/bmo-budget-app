@@ -149,6 +149,11 @@ test('fresh auth and private-budget foundation through two production instances'
     await prisma.session.update({ where: { id: firstSessionId }, data: { createdAt: new Date(Date.now() - 16 * 60000) } })
     await status(await owner.call('/api/auth/change-email', { newEmail: `fresh-${randomUUID()}@example.invalid`, callbackURL: '/settings' }), 403)
     await status(await owner.call('/api/security/add-password', { newPassword: 'Another local password 2026!' }), 403)
+    const settings = await owner.call('/settings')
+    const recovery = (settings.headers.get('location') ?? '') + await settings.text()
+    assert.match(recovery, /fresh-session/)
+    assert.match(recovery, /settings/)
+    assert.doesNotMatch(recovery, /Bimo could not load this page/)
   })
   let second: Browser
   await t.test('forgot-password is generic and reset revokes two real sessions', async () => {

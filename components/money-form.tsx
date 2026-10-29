@@ -2,6 +2,8 @@
 import { useRef, useState, useTransition, type FormEvent, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { useHydrated } from '@/lib/use-hydrated'
+import { userFacingError } from '@/lib/user-errors'
+import { ActionButton } from './action-button'
 
 type Fields = Record<string, FormDataEntryValue>
 
@@ -23,12 +25,12 @@ export function SaveForm({ budgetId, children, build, label, saved, disabled = f
     try {
       const response = await fetch(`/api/budgets/${budgetId}/${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...pending.current.body, requestId: pending.current.requestId }) })
       const result = await response.json()
-      if (!response.ok) { setError(result.error || 'The change could not be saved.'); if (response.status < 500) pending.current = null; return }
+      if (!response.ok) { setError(`${userFacingError(response.status, result)}${response.status >= 500 ? ' Retrying sends your original details, even if you edit the fields.' : ''}`); if (response.status < 500) pending.current = null; return }
       pending.current = null; setSuccess('Saved.')
       startTransition(() => { saved?.(); router.refresh() })
     } catch { setError('Save not confirmed. Retry to send the same change safely, even if you have edited the fields.') } finally { setBusy(false) }
   }
-  return <form method="post" onSubmit={submit}><fieldset disabled={!ready || busy || refreshing || disabled}>{children}<button disabled={!ready || busy || refreshing || disabled}>{busy || refreshing ? 'Saving…' : label}</button></fieldset>{error && <p role="alert" className="error">{error}</p>}{success && <p role="status" className="success">{success}</p>}</form>
+  return <form method="post" onSubmit={submit} aria-busy={busy || refreshing}><fieldset disabled={!ready || busy || refreshing || disabled}>{children}<ActionButton disabled={!ready || disabled} busy={busy || refreshing} pendingLabel="Saving…">{label}</ActionButton></fieldset>{error && <p role="alert" className="error">{error}</p>}{success && <p role="status" className="success">{success}</p>}</form>
 }
 
 export function Amount({ label = 'Amount (NGN)', value = '', signed = false }: { label?: string; value?: string; signed?: boolean }) {

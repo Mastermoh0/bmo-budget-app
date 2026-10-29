@@ -29,7 +29,7 @@ try {
     }
     assert(ready, 'Local test server did not become ready')
   }
-  await command(['--import', 'tsx', '--test', '--test-concurrency=1', 'tests/foundation.test.ts', 'tests/money.test.ts', 'tests/targets.test.ts', 'tests/desktop-sharing.test.ts'], { ...env, BETTER_AUTH_URL: 'http://127.0.0.1:3110', TEST_SECOND_ORIGIN: 'http://127.0.0.1:3111' })
+  await command(['--import', 'tsx', '--test', '--test-concurrency=1', 'tests/foundation.test.ts', 'tests/money.test.ts', 'tests/targets.test.ts', 'tests/desktop-sharing.test.ts', 'tests/interface.test.ts'], { ...env, BETTER_AUTH_URL: 'http://127.0.0.1:3110', TEST_SECOND_ORIGIN: 'http://127.0.0.1:3111' })
 } finally {
   for (const server of servers) server.kill()
 }

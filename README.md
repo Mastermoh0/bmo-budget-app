@@ -59,6 +59,16 @@ Owners/editors can manage groups and targets; viewers read them. Every mutation 
 
 Recorded browser evidence: `C:\Users\MasterMoh\.codex\visualizations\2026\10\25\01a173e9-b493-7902-9acb-c6ccae4374e8\groups-targets-2026-10-28\evidence.md`. The shared master plan records the milestone and links the screenshots/recordings.
 
+## Canvas appearance and loading feedback
+
+The working app uses the approved Canvas composition and light palette, with Night Desk charcoal/amber dark mode. The header switch remembers an explicit browser choice; switching keeps the page, selected month, unfinished fields and financial records. Manrope and its OFL licence are served locally. The Budget page has expandable purpose groups/categories, a detailed worksheet and progressive management/notes controls.
+
+Next.js route loading boundaries show real skeletons for budget pages, Settings, auth/setup and invitations. Loading announces one status, hides decorative placeholders, uses no sample balances and respects reduced motion. No artificial production delay is added. Actions react on press, show a pending label/indicator while waiting and prevent repeated submissions. Month/filter navigation also shows progress.
+
+Unexpected internal/provider errors are replaced with friendly guidance. A failed money save retains its original request and explains that retry sends those original details, even after visible edits. Settings requests requiring fresh authentication lead to a friendly sign-in notice and return to Settings afterward. `DESIGN.md`, `PRODUCT.md` and `.impeccable/design.json` describe the built system; the shared master plan links screenshots, recordings and the independent review.
+
+Evidence: `C:\Users\MasterMoh\.codex\visualizations\2026\10\25\01a173e9-b493-7902-9acb-c6ccae4374e8\canvas-design-2026-10-29\evidence.md`.
+
 ## Credentials and hosted checks deferred by the user
 
 Google sign-in/linking is wired for identity scopes only and disabled until both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are placed in the ignored `.env`. Register `http://localhost:3100/api/auth/callback/google` in that OAuth client. There is no Gmail permission or mailbox integration here. Do not put secrets in Git or chat.
