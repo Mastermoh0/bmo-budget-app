@@ -17,5 +17,6 @@ export async function MoneyPage({ params, searchParams, view }: MoneyPageProps &
   let data
   try { data = await moneySnapshot(session.user.id, id, query.month ?? todayLagos().slice(0, 7), Number(query.page ?? '1'), query) }
   catch (error) { if (error instanceof AccessError && (error.status === 404 || error.status === 400)) notFound(); throw error }
+  if (data.budget.isPractice) redirect(`/learn/practice${view === 'budget' ? '' : `/${view}`}`)
   return <BudgetAccessGuard id={id}><MoneyWorkspace key={`${id}-${data.month}`} data={data} view={view} /></BudgetAccessGuard>
 }

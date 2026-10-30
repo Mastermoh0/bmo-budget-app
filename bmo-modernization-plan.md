@@ -1,6 +1,6 @@
 # BMO: product and modernization plan
 
-Prepared 25 October 2026; updated 27 October 2026. The framework-upgrade increment is recorded in section 30. Section 31's approved database/Better Auth local foundation is implemented and checked in the separate `codex/database-auth-foundation` checkout; section 32 records the results and continuation path. The user explicitly postponed Neon/Google setup. Public deployment, real email delivery and changes to the old database remain outside this increment.
+Prepared 25 October 2026; updated 30 October 2026. The separate `codex/database-auth-foundation` checkout now contains the checked framework/auth foundation, money engine, groups/targets, desktop sharing, Canvas/Night Desk design, task windows and notes controls (sections 30–40). Section 41 records the implemented guided-practice tutorial. Older planning statements are retained as decision history; the latest implementation records take precedence. Neon/Google credentials, real email and public deployment remain deferred. The original database is preserved.
 
 ## 1. Product direction and decisions
 
@@ -1587,7 +1587,7 @@ Checked against the current local application's screens and button names on 30 O
 flowchart TD
     home(["Open Your budgets"])
     first{"Your first budget?"}
-    setup["First-budget setup opens automatically"]
+    setup["Learn Bimo: choose Set up my own budget"]
     another["Click Create another budget"]
     name["Enter a budget name"]
     create["Click Create private budget"]
@@ -1720,3 +1720,56 @@ Owners/editors can add, edit and delete shared notes; viewers can read them. Del
 ### If a save is interrupted
 
 The app shows a friendly message. While a request is running, wait for confirmation. If confirmation is uncertain, retry the same change; Bimo retains its original request/details while that page stays mounted. Do not assume a network error means the change was not saved. Reload/navigation does not preserve that client retry state.
+
+## 41. Game-like guided practice — implemented locally, 30 October 2026
+
+### Experience and source
+
+The user requested the tutorial using Impeccable and the Karpathy guidelines, informed by the supplied [Appcues onboarding article](https://www.appcues.com/blog/user-onboarding-ui-ux-patterns). The implementation uses a concise welcome, action-based guidance, a visible checklist, honest progress and optional entry. It adds no Appcues SDK, paid onboarding service, AI calls or external analytics. Earlier references to the core tutorial as future work are superseded here.
+
+New verified email signups reach Learn Bimo. They can start with practice money or immediately choose Set up my own budget. Google/invitation destination rules remain distinct; invited household members can enter their own safe practice from the persistent Learn Bimo navigation without editing a shared budget. Returning users are not forced through the guide again. The welcome adapts its return action when the person already has access to a real budget.
+
+### Four actual missions and optional challenge
+
+The guide sits beside Bimo's actual Accounts, Budget and Transactions views. It uses the same TaskDialog, SaveForm, validation and transactional money engine as normal budgeting. A mission advances only after its prescribed change commits; Back and completed-checklist review cannot mark it complete or change money. There are no fake scores, streaks, countdowns or fabricated progress.
+
+| Mission | Saved action | Expected result |
+| --- | --- | --- |
+| Meet your money | Add Practice wallet with a ₦100,000 bank opening balance | ₦100,000 account total and ready to assign |
+| Give it a purpose | Assign ₦20,000 Food and ₦10,000 Transport; both must save | ₦70,000 ready; bank total unchanged |
+| Record a small purchase | Record ₦2,000 Food expense | ₦98,000 account total; Food ₦18,000 |
+| Make room in your plan | Move ₦5,000 Transport to Food | Food ₦23,000; Transport ₦5,000; account still ₦98,000 |
+| Optional: spot a shortfall | Record a further ₦26,000 Food expense | Account ₦72,000; Food −₦3,000 |
+| Optional: cover it | Move ₦3,000 Transport to Food | Food ₦0; Transport ₦2,000; account remains ₦72,000 |
+
+Skip saves the person's place. Resume survives reload/sign-in; Replay/Start over creates a fresh practice state without resetting real finances. Completed lessons can be reviewed from the checklist; whole-tutorial replay is available from Learn Bimo. Finish removes the sample budget and returns to normal budgets/setup; it does not copy sample money or categories into a real budget. Independent checkpoint replay and additional contextual advanced-feature lessons remain possible follow-up refinements, not claims made by this core tutorial.
+
+### Storage, guards and migration
+
+Reviewed migration `20261030010000_bimo_guided_practice` adds `Budget.isPractice` (false for all existing budgets) and per-user `TutorialProgress`: current lesson/status, bound sample budget/date, optional challenge, control version/retry metadata and start/first-action/core-completion timestamps. Learning progress is separate from household setup and UserSettings. No extra request is made for each keystroke or review hint.
+
+Practice records are private to their learner and excluded from normal budget lists. A viewer learns in their own owner-scoped sample and retains read-only access to someone else's real budget. Practice CSV/portable/report exports, household invitations, budget renaming and unsupported money actions are blocked server-side. Valid practice commands run inside the existing budget lock and operation-key journal; retrying cannot duplicate a mission. Tutorial control actions have per-user serialization, request identity and stale-version rejection.
+
+Finish/restart locks and verifies the exact tutorial-bound budget, its owner and practice flag before discarding its sample entries, transactions, assignments, operations and categories/accounts. A regression deliberately binds progress to a real test budget and proves cleanup refuses to remove it. The original application database and original source remain preserved. This additive migration was deployed only to modern local development/test targets using migrate deploy; the second test deployment is a no-op. Dependencies and lockfiles did not change.
+
+### Validation and design finish
+
+The final production build, lint and nonincremental type checking passed. **46 tests passed, zero failed**, including the previous 44 regressions plus end-to-end tutorial checks for exact arithmetic, unsupported commands, concurrent cross-instance retries, private access, viewer-owned practice, export/invitation denial, skip/resume, stale reset, protected cleanup and replay. The first run caught and fixed an advisory-lock return-type issue; final tests use the actual redirect signal rather than relying on a shared navigation link.
+
+Recorded browser checks cover actual signup/local email verification to Learn, both welcome themes, wrong inputs preserving the lesson, no financial request while typing, saved-only advancement, Back review, skip/resume/reload, both assignments, all core/challenge figures, denied practice exports/invitations, keyboard modality, reduced motion, narrow layouts, completion cleanup, empty real-budget creation and safe replay. Read-only database reconciliation confirms the synthetic real budget has zero accounts/categories/transactions/entries/operations, both completed practice budgets are gone, and personal completion timestamps remain. The user's open budget was not a test target.
+
+The independent Impeccable reviewer returned **SHIP** after one correction batch: the welcome eyebrow was removed and transition/loading screenshots were replaced with settled captures. Documentation records the actual scoped typography/layout and behavior. This verdict covers the tutorial and its named fixes, not public readiness or an accessibility certification. Novice comprehension and a five-minute completion claim still require real-user testing. The distinct mobile composition remains deferred; current narrow layouts are usable fallbacks.
+
+### Evidence and continuation
+
+- [All screenshots, recordings, assertions and test logs](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/onboarding-2026-10-30/evidence.md)
+- [Main guided-practice walkthrough](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/onboarding-2026-10-30/guided-practice-walkthrough.webm)
+- [Final correction/confirmation recording](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/onboarding-2026-10-30/review-confirmation.webm)
+- [Final review verdict](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/onboarding-2026-10-30/finish-verdict.md)
+- [Independent database reconciliation](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/onboarding-2026-10-30/database-reconciliation.json)
+
+The next remaining desktop feature decision is the Quick Budget preview/selection contract. Optional Gmail draft ingestion still needs bank samples and a compliant public authorization path under the $0 constraint. Sentry/provider setup, real email, account deletion/privacy, backup restoration, hosted performance/capacity and public deployment remain on the roadmap. This tutorial does not claim to resolve those gates.
+
+![Welcome to guided practice](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/onboarding-2026-10-30/01-welcome-light.png)
+
+![Practice with the real controls](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/onboarding-2026-10-30/review-practice-desktop-dark.png)

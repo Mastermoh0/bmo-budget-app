@@ -11,6 +11,7 @@ const jsonRecord = (value: unknown): Prisma.InputJsonValue => JSON.parse(JSON.st
 async function access(tx: Prisma.TransactionClient, budgetId: string, userId: string) {
   const budget = await tx.budget.findFirst({ where: { id: budgetId, archivedAt: null }, include: { members: { where: { userId } } } })
   if (!budget || (budget.ownerUserId !== userId && !budget.members.length)) throw new AccessError(404, 'Budget not available')
+  if (budget.isPractice) throw new AccessError(403, 'Practice is private learning space. Invite people from a real budget.')
   return { ...budget, role: budget.ownerUserId === userId ? 'OWNER' : budget.members[0].role }
 }
 

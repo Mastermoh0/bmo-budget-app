@@ -28,13 +28,13 @@ export function AuthForm({ mode, googleConfigured }: { mode: AuthMode; googleCon
     try {
       let result
       if (mode === 'signup') {
-        result = await authClient.signUp.email({ email, password, name: String(fields.get('name') ?? '').trim(), callbackURL: destination() === '/invitations' ? '/invitations' : '/setup' })
+        result = await authClient.signUp.email({ email, password, name: String(fields.get('name') ?? '').trim(), callbackURL: destination() === '/invitations' ? '/invitations' : '/learn' })
         if (!result.error) setNotice('Check the local test inbox for your verification link. Verify your email before opening a budget.')
       } else if (mode === 'signin') {
         result = await authClient.signIn.email({ email, password })
         if (!result.error) { router.replace(destination()); router.refresh(); return }
       } else if (mode === 'verify') {
-        result = await authClient.sendVerificationEmail({ email, callbackURL: destination() === '/invitations' ? '/invitations' : '/setup' })
+        result = await authClient.sendVerificationEmail({ email, callbackURL: destination() === '/invitations' ? '/invitations' : '/learn' })
         if (!result.error) setNotice('If this address is eligible, a verification link is in the local test inbox.')
       } else if (mode === 'forgot-password') {
         result = await authClient.requestPasswordReset({ email, redirectTo: '/auth/reset-password' })

@@ -19,7 +19,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const body = await request.json().catch(() => null)
     if (!body || typeof body.name !== 'string' || !body.name.trim() || body.name.trim().length > 80 || Object.keys(body).some(key => key !== 'name')) throw new AccessError(400, 'Only a valid budget name can be changed here')
     // The permission predicate is part of the update, not a role cached in the login session.
-    const updated = await prisma.budget.updateMany({ where: { id, archivedAt: null, OR: [{ ownerUserId: session.user.id }, { members: { some: { userId: session.user.id, role: 'EDITOR' } } }] }, data: { name: body.name.trim() } })
+    const updated = await prisma.budget.updateMany({ where: { id, archivedAt: null, isPractice: false, OR: [{ ownerUserId: session.user.id }, { members: { some: { userId: session.user.id, role: 'EDITOR' } } }] }, data: { name: body.name.trim() } })
     if (!updated.count) throw new AccessError(403, 'You cannot change this budget')
     return json({ updated: true })
   } catch (error) { return apiFailure(error) }

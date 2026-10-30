@@ -4,7 +4,7 @@ import { AccessError } from './access'
 
 export async function accessibleBudgets(userId: string) {
   const budgets = await prisma.budget.findMany({
-    where: { archivedAt: null, OR: [{ ownerUserId: userId }, { members: { some: { userId } } }] },
+    where: { archivedAt: null, isPractice: false, OR: [{ ownerUserId: userId }, { members: { some: { userId } } }] },
     include: { members: { where: { userId }, select: { role: true } } }, orderBy: { createdAt: 'asc' },
   })
   return budgets.map(budget => ({ id: budget.id, name: budget.name, currency: budget.currency, timezone: budget.timezone, role: budget.ownerUserId === userId ? 'OWNER' : budget.members[0].role }))

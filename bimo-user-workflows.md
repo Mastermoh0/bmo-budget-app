@@ -8,7 +8,7 @@ Checked against the current local application's screens and button names on 30 O
 flowchart TD
     home(["Open Your budgets"])
     first{"Your first budget?"}
-    setup["First-budget setup opens automatically"]
+    setup["Learn Bimo: choose Set up my own budget"]
     another["Click Create another budget"]
     name["Enter a budget name"]
     create["Click Create private budget"]

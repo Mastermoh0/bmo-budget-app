@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-29T17:25:18.646635+00:00",
+  "generatedAt": "2026-10-30T10:01:12.869172+00:00",
   "title": "Design System: Bimo Canvas and Night Desk",
   "extensions": {
     "colorMeta": {
@@ -481,6 +481,38 @@
       "task-heading": {
         "displayName": "Task heading",
         "purpose": "Focused task-window title; inherits the section heading weight, line-height and tracking."
+      },
+      "tutorial-welcome-heading": {
+        "displayName": "Tutorial welcome heading",
+        "purpose": "Main welcome heading; shares the existing headline weight, line-height and tracking."
+      },
+      "tutorial-welcome-heading-intermediate": {
+        "displayName": "Tutorial welcome heading at intermediate width",
+        "purpose": "Welcome heading override at 900px and below."
+      },
+      "tutorial-welcome-heading-narrow": {
+        "displayName": "Tutorial welcome heading at narrow width",
+        "purpose": "Welcome heading override at 480px and below."
+      },
+      "tutorial-intro": {
+        "displayName": "Tutorial introduction",
+        "purpose": "Welcome introduction; returns to the body size at 900px."
+      },
+      "lesson-index": {
+        "displayName": "Welcome lesson index",
+        "purpose": "Numbered preview lessons with tabular numerals."
+      },
+      "practice-status": {
+        "displayName": "Practice context tag",
+        "purpose": "Practice only label inside the guide, alongside its heading."
+      },
+      "mission-caption": {
+        "displayName": "Completed mission caption",
+        "purpose": "Completed text underneath a mission title."
+      },
+      "practice-summary": {
+        "displayName": "Practice financial summary",
+        "purpose": "Runtime summary figures in the practice workspace at all tutorial breakpoints."
       }
     },
     "shadows": [
@@ -544,6 +576,14 @@
       {
         "name": "narrow-fallback",
         "value": "650px"
+      },
+      {
+        "name": "practice-intermediate",
+        "value": "1100px"
+      },
+      {
+        "name": "tutorial-narrow",
+        "value": "480px"
       }
     ],
     "notes": [
@@ -552,7 +592,14 @@
       "Tonal ramps are synthesized OKLCH panel previews, not additional production palette tokens. Frontmatter contains the actual source colours.",
       "Component samples use CSS custom properties with Canvas fallback values so they render independently and inherit Night Desk roles when those variables are supplied. Static switch and navigation samples do not emulate the application runtime.",
       "Demo figures in the purpose snippet are explicitly labelled; production figures always come from runtime records.",
-      "Task-window backdrop: #10182066. The open dialog specimen is static and cannot reproduce showModal focus containment, background inertness, dismissal, field reset, save/refresh sequencing or original-request recovery. Those belong to components/task-dialog.tsx and money-form.tsx. Unconfirmed close/reopen retention applies only while the same page remains mounted; it is not durable across navigation or reload."
+      "Task-window backdrop: #10182066. The open dialog specimen is static and cannot reproduce showModal focus containment, background inertness, dismissal, field reset, save/refresh sequencing or original-request recovery. Those belong to components/task-dialog.tsx and money-form.tsx. Unconfirmed close/reopen retention applies only while the same page remains mounted; it is not durable across navigation or reload.",
+      "Guided practice sources: app/tutorial.css, app/learn/page.tsx, components/tutorial-guide.tsx, tutorial-actions.tsx, practice-page.tsx and MoneyWorkspace practice mode. Existing palette, geometry and native task controls remain authoritative. Welcome begins with its main heading; no eyebrow is included.",
+      "Tutorial layout: welcome max-width 1120px, 1.1fr/.9fr columns, 72px gap, 44px vertical margin. At 900px it stacks with 24px gap and 16px vertical margins; 480px reduces gap to 12px. Practice uses a 280px guide, 36px gap, right divider and 28px right padding; 1100px changes these to 240px, 24px and 20px, with stacked summaries. At 900px the guide moves above the workspace with bottom divider/28px bottom padding and a two-column checklist; 480px uses one checklist column. Existing 650px task-form fallback is retained. These remain narrow fallbacks, not the separate mobile milestone.",
+      "The one supplied detector scan reported seven literal type-size advisories (38px, 16px, 18px, 10px, 11px, 25px and 30px). DESIGN.md now records their intentional tutorial roles without changing source styles or repairing unrelated drift.",
+      "Native progress has 6px height and counts saved missions: four core tasks or six after the optional challenge. Completed text/checkmarks supplement the count; future buttons are disabled and aria-current=step marks the selected instruction. Heading focus follows saved lesson changes without scrolling. Completed review and Back explain earlier results without undoing current balances.",
+      "Learn Bimo supports saved completion, Skip, resume and replay. The private marked sample budget uses the real transactional money engine; exports, invitations and unsupported practice actions are denied server-side. Finish/restart discard only the verified bound sample and never seed a real budget. Progress is per user, including learners who are viewers on a shared real budget. Updating… actions preserve their original request for uncertain same-mounted-page retries and expose friendly alerts.",
+      "The tutorial checklist specimen is static visual documentation only. Its sample count/checkmark illustrate a saved state and do not perform saves, progress advancement, focus restoration, persistence, review, skip/resume/replay or cleanup. Those behaviors belong to application runtime. No Appcues SDK, paid service, fake score/streak or forced timer is introduced.",
+      "Guided-practice evidence: C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/onboarding-2026-10-30/finish-verdict.md is SHIP after the two named fixes. Documentation uses settled replacement captures and supplied logs/reconciliation; no browser or integration checks were independently rerun during this sync. Novice comprehension, completion time and public readiness are not established."
     ]
   },
   "components": [
@@ -637,6 +684,14 @@
       "description": "Static open Assign money specimen from the implemented native task window; both themes share geometry. Application code supplies modal behavior and safe original-request retry.",
       "html": "<dialog open class=\"ds-task-window\" aria-labelledby=\"ds-task-title\"><div class=\"ds-task-heading\"><h2 id=\"ds-task-title\" tabindex=\"-1\">Assign money</h2><button type=\"button\" class=\"ds-task-button ds-task-secondary ds-task-close\" aria-label=\"Close assign money\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\" /></svg></button></div><div class=\"ds-task-content\"><label class=\"ds-task-label\">Category<select class=\"ds-task-field\" name=\"categoryId\" required><option value=\"\">Choose a category</option></select></label><label class=\"ds-task-label\">Amount (NGN)<input class=\"ds-task-field\" name=\"amount\" inputmode=\"decimal\" placeholder=\"0.00\" required /></label><p class=\"ds-task-small\">A positive amount assigns money. A negative amount returns available money.</p><button type=\"button\" class=\"ds-task-button\">Assign money</button></div><div class=\"ds-task-footer\"><button type=\"button\" class=\"ds-task-button ds-task-secondary\">Cancel</button></div></dialog>",
       "css": ".ds-task-window{position:relative;margin:0 auto;font-family:Manrope,system-ui,sans-serif;font-size:14px;line-height:1.6;width:min(640px,calc(100vw - 32px));max-height:calc(100dvh - 40px);padding:28px;border:1px solid var(--control,#7389a3);border-radius:12px;background:var(--surface,#fff);color:var(--text,#233b55);box-shadow:0 18px 64px #0003;overflow:auto}.ds-task-window::backdrop{background:#10182066}.ds-task-heading{display:flex;align-items:start;justify-content:space-between;gap:20px;margin-bottom:24px}.ds-task-heading h2{font-size:22px;font-weight:750;line-height:1.35;letter-spacing:-.02em;margin:4px 0 0;text-wrap:balance}.ds-task-heading h2:focus{outline:none}.ds-task-content{display:grid;gap:16px;min-width:0}.ds-task-label{display:grid;gap:7px;font-size:13px;font-weight:650;min-width:0}.ds-task-field{font:inherit;width:100%;min-width:0;min-height:42px;padding:10px 12px;border:1px solid var(--control,#7389a3);border-radius:6px;color:var(--text,#233b55);background:var(--surface,#fff);caret-color:var(--accent,#285fb5)}.ds-task-field::placeholder{color:var(--muted,#506782);opacity:1}.ds-task-small{font-size:12px;line-height:1.65;color:var(--muted,#506782);margin:8px 0 16px;max-width:76ch}.ds-task-button{font-family:inherit;position:relative;display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:40px;width:fit-content;max-width:100%;padding:10px 16px;border:1px solid var(--primary,#233b55);border-radius:6px;background:var(--primary,#233b55);color:var(--on-primary,#fff);font-size:13px;font-weight:750;cursor:pointer;transition:background 160ms ease-out,box-shadow 160ms ease-out,transform 100ms ease-out}.ds-task-button:hover{background:var(--accent,#285fb5);border-color:var(--accent,#285fb5);color:var(--on-primary,#fff)}.ds-task-button:active{transform:translateY(1px);box-shadow:inset 0 2px 4px #0003}.ds-task-button:focus-visible,.ds-task-field:focus-visible{outline:3px solid var(--accent,#285fb5);outline-offset:4px}.ds-task-button:disabled{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none}.ds-task-button[aria-busy=true]{opacity:.85;cursor:progress}.ds-task-secondary{background:var(--surface,#fff);color:var(--text,#233b55);border-color:var(--control,#7389a3)}.ds-task-secondary:hover{background:var(--raised,#f4f7fb);color:var(--text,#233b55);border-color:var(--text,#233b55)}.ds-task-close{width:36px;min-height:36px;padding:8px;flex:none}.ds-task-close svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8}.ds-task-footer{display:flex;align-items:center;gap:16px;border-top:1px solid var(--line,#dbe4ef);margin-top:24px;padding-top:18px}@media(max-width:650px){.ds-task-window{padding:22px 18px;max-height:calc(100dvh - 24px);width:calc(100vw - 20px)}.ds-task-field{font-size:16px}.ds-task-footer{flex-wrap:wrap}}@media(prefers-reduced-motion:reduce){.ds-task-button{transition:none}}"
+    },
+    {
+      "name": "Practice mission checklist",
+      "kind": "custom",
+      "refersTo": "mission-current-light",
+      "description": "Static guide specimen of one saved core mission; runtime operations supply progress and behavior.",
+      "html": "<aside class=\"ds-guide\" aria-label=\"Practice guide specimen\"><div class=\"ds-guide-heading\"><h2>Learning missions</h2><span class=\"ds-practice-status\">Practice only</span></div><p class=\"ds-small\">Sample money, private to you. Your real budgets are untouched.</p><progress value=\"1\" max=\"4\" aria-label=\"Practice missions completed\"></progress><p class=\"ds-small\">1 of 4 missions complete · static specimen</p><ol class=\"ds-missions\"><li><button type=\"button\"><span class=\"ds-mission-number\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\"><path d=\"m5 12 4 4L19 6\" /></svg></span><span>Meet your money<small>Completed</small></span></button></li><li><button type=\"button\" aria-current=\"step\"><span class=\"ds-mission-number\" aria-hidden=\"true\">2</span><span>Give it a purpose</span></button></li><li><button type=\"button\" disabled><span class=\"ds-mission-number\" aria-hidden=\"true\">3</span><span>Record a small purchase</span></button></li><li><button type=\"button\" disabled><span class=\"ds-mission-number\" aria-hidden=\"true\">4</span><span>Make room in your plan</span></button></li></ol></aside>",
+      "css": ".ds-guide{font-family:Manrope,system-ui,sans-serif;font-size:14px;line-height:1.6;color:var(--text,#233b55);max-width:280px;min-width:0;padding-right:28px;border-right:1px solid var(--line,#dbe4ef)}.ds-guide-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.ds-guide h2{font-size:17px;font-weight:750;line-height:1.35;letter-spacing:-.02em;margin:0}.ds-practice-status{display:inline-flex;background:var(--raised,#f4f7fb);color:var(--muted,#506782);font-size:10px;font-weight:650;padding:3px 8px;border-radius:5px}.ds-small{font-size:12px;line-height:1.65;margin:8px 0 16px;color:var(--muted,#506782)}.ds-guide progress{width:100%;height:6px;margin-top:12px}.ds-guide progress::-webkit-progress-bar{background:var(--active,#e6edf6);border-radius:5px}.ds-guide progress::-webkit-progress-value{background:var(--accent,#285fb5);border-radius:5px}.ds-missions{list-style:none;margin:20px 0;padding:0}.ds-missions li{margin:4px 0}.ds-missions button{font-family:inherit;font-size:13px;line-height:1.6;font-weight:750;display:flex;width:100%;max-width:100%;min-height:40px;gap:12px;align-items:center;justify-content:flex-start;text-align:left;white-space:normal;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--text,#233b55);padding:10px 8px;cursor:pointer;transition:background 160ms ease-out,box-shadow 160ms ease-out,transform 100ms ease-out}.ds-missions button:hover{background:var(--raised,#f4f7fb);border-color:var(--text,#233b55)}.ds-missions button[aria-current=step]{background:var(--active,#e6edf6);border-color:var(--control,#7389a3)}.ds-missions button:focus-visible{outline:3px solid var(--accent,#285fb5);outline-offset:4px}.ds-missions button:active{transform:translateY(1px);box-shadow:inset 0 2px 4px #0003}.ds-missions button:disabled{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none}.ds-missions small{display:block;color:var(--muted,#506782);font-size:11px;font-weight:400;margin-top:3px}.ds-mission-number{width:18px;min-width:18px;font-variant-numeric:tabular-nums;color:var(--accent,#285fb5)}.ds-mission-number svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8}@media(prefers-reduced-motion:reduce){.ds-missions button{transition:none}}"
     }
   ],
   "narrative": {
@@ -647,7 +702,8 @@
       "Open, divided sections and grouped purposes with expandable financial details.",
       "Exact NGN figures, tabular numerals and visible status language.",
       "Shared geometry across light and dark appearances.",
-      "Immediate pending feedback, structural loading placeholders and recoverable errors."
+      "Immediate pending feedback, structural loading placeholders and recoverable errors.",
+      "Guided practice beside working controls, with saved-operation progress and explicit sample-money context."
     ],
     "rules": [
       {
@@ -671,14 +727,16 @@
       "**Do** show exact runtime balances and distinguish overspending with words as well as colour.",
       "**Do** retain work during asynchronous actions and explain what a retry will send.",
       "**Do** pair decorative loading with one accessible status and honour reduced motion.",
-      "**Do** reuse the self-hosted Manrope face and authored inline Bimo mark."
+      "**Do** reuse the self-hosted Manrope face and authored inline Bimo mark.",
+      "**Do** pair practice-only language and saved-operation counts with the actual working money controls."
     ],
     "donts": [
       "**Don't** copy fixture amounts from a prototype or review screenshot into product defaults.",
       "**Don't** replace open purpose groups with elevated card stacks on these screens.",
       "**Don't** remove visible field labels, keyboard focus or textual error guidance.",
       "**Don't** imply an unavailable provider, mailbox connection or account-deletion feature is ready.",
-      "**Don't** describe the narrow fallback as the separately planned mobile composition."
+      "**Don't** describe the narrow fallback as the separately planned mobile composition.",
+      "**Don't** replace saved tutorial progress with scores, streaks, countdowns or a Next click."
     ]
   }
 }

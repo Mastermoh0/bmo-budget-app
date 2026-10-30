@@ -21,6 +21,7 @@ model User {
   memberships   BudgetMember[]
   settings      UserSettings?
   mailEvents    EmailOutbox[]
+  tutorial      TutorialProgress?
 
   @@unique([email])
   @@map("user")
@@ -113,6 +114,8 @@ model Budget {
   updatedAt           DateTime       @updatedAt
   archivedAt          DateTime?
   moneyRevision       Int            @default(0)
+  isPractice          Boolean        @default(false)
+  tutorial            TutorialProgress?
   moneyAccounts       MoneyAccount[]
   categories          BudgetCategory[]
   transactions        MoneyTransaction[]
@@ -319,6 +322,31 @@ model UserSettings {
   lastBudgetId     String?
   setupCompletedAt DateTime?
   updatedAt        DateTime  @updatedAt
+}
+
+enum TutorialStatus {
+  ACTIVE
+  SKIPPED
+  COMPLETED
+}
+
+model TutorialProgress {
+  userId           String         @id
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status           TutorialStatus @default(ACTIVE)
+  practiceBudgetId String?        @unique
+  practiceBudget   Budget?        @relation(fields: [practiceBudgetId], references: [id], onDelete: SetNull)
+  practiceDate     DateTime?      @db.Date
+  lesson           Int            @default(1)
+  challenge        Boolean        @default(false)
+  version          Int            @default(0)
+  lastRequestId    String?        @db.Uuid
+  lastAction       String?
+  lastDestination  String?
+  startedAt        DateTime?
+  firstActionAt    DateTime?
+  completedAt      DateTime?
+  updatedAt        DateTime       @updatedAt
 }
 
 model EmailOutbox {

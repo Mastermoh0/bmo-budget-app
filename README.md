@@ -2,7 +2,7 @@
 
 This isolated development copy implements the approved database/Better Auth milestone. The original Next.js-upgraded app is preserved at `C:\Users\MasterMoh\bmo-budget-app`, checkpoint `7319b0f`. The current branch is `codex/database-auth-foundation`.
 
-The preview supports verified email/password registration, recovery, email/password changes, session management, private-budget setup, current owner/editor/viewer access, financial accounts, category groups/allocations, savings targets, transactions with payees/search/filters, filtered table/chart reports, CSV and portable financial exports, shared notes and household invitations/roles/ownership transfer. Gmail, chat and redesign remain later milestones. Unported API paths return an explicit unavailable response; the previous source is preserved in `legacy-reference/`, outside the active build. The old Prisma schema/migrations and socket-server source remain reference material.
+The preview supports verified email/password registration, recovery, email/password changes, session management, private-budget setup, current owner/editor/viewer access, financial accounts, category groups/allocations, savings targets, transactions with payees/search/filters, filtered table/chart reports, CSV and portable financial exports, shared notes, household invitations/roles/ownership transfer and guided practice in Canvas/Night Desk. Gmail, chat and the separate mobile composition remain later milestones. Unported API paths return an explicit unavailable response; the previous source is preserved in `legacy-reference/`, outside the active build. The old Prisma schema/migrations and socket-server source remain reference material.
 
 ## Run locally
 
@@ -14,9 +14,15 @@ npm run local:setup
 npm run dev
 ```
 
-Open [Bimo](http://localhost:3100) and the private [Mailpit test inbox](http://127.0.0.1:8025). Register a synthetic address ending in `example.invalid`, open its captured verification link, then explicitly create a private NGN budget. Local email is captured and never delivered to real inboxes.
+Open [Bimo](http://localhost:3100) and the private [Mailpit test inbox](http://127.0.0.1:8025). Register a synthetic address ending in `example.invalid`, open its captured verification link, then choose practice or Set up my own budget in Learn Bimo. Local email is captured and never delivered to real inboxes.
 
 Setup generates `.env` with random development secrets only if that file does not already exist. It starts separate loopback-only PostgreSQL (port 5433) and Mailpit containers, creates new dev/test/shadow databases and applies the reviewed modern migrations. It never resets a database or deletes a Docker volume. Re-running setup preserves existing records and settings. Do not use the legacy `docker-compose.yml` or old seeding instructions for this preview.
+
+## Guided practice
+
+The Learn Bimo navigation opens four hands-on missions using actual budgeting forms and isolated sample money, with an optional overspending challenge. Wrong inputs cannot advance a mission. Skip/resume/replay is saved per person; viewers get their own private practice. Practice is excluded from real budget lists, exports and invitations. Finish/reset discards only the verified bound sample; real budgets start empty. Start/first-action/core-completion timestamps are saved locally for progress evaluation without an external analytics service. No five-minute novice-comprehension or public-readiness claim is made.
+
+Reviewed migration `20261030010000_bimo_guided_practice` adds the practice flag and per-user tutorial state. The [recorded tutorial checks](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/onboarding-2026-10-30/evidence.md) include 46 passing regressions, browser recordings, isolation and read-only database reconciliation. The shared plan records the milestone in section 41.
 
 ## Verify
 

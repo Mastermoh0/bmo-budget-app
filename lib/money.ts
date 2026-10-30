@@ -5,12 +5,13 @@ import { AccessError } from './errors'
 import { budgetMonth, calendarDate, cents, decimal, monthTotals, todayLagos } from './money-math'
 import { targetProgress } from './targets'
 import { moneyFilters, transactionWhere, reportWhere, type FilterInput } from './money-filters'
+import { practiceCommand } from './tutorial-guard'
 
 type Tx = Prisma.TransactionClient
 const kinds = ['INCOME', 'EXPENSE', 'TRANSFER', 'REFUND'] as const
 type PostingKind = typeof kinds[number] | 'OPENING'
 type Posting = { kind: PostingKind; date: Date; accountId: string; toAccountId: string | null; categoryId: string | null; amount: string; memo: string; payee?: string }
-type Command =
+export type Command =
   | { action: 'note'; kind: 'group' | 'category'; id: string; version: number; note: string }
   | { action: 'account'; name: string; kind: 'BANK' | 'SAVINGS' | 'CASH'; amount: string; date: Date }
   | { action: 'category'; name: string; groupId?: string | null }
@@ -159,6 +160,7 @@ export async function applyMoney(userId: string, budgetId: string, body: unknown
           if (existing.fingerprint !== fingerprint || existing.actorUserId !== userId) throw new AccessError(409, 'This request ID has already been used for different details')
           return existing.result
         }
+        const practice = budget.isPractice ? await practiceCommand(tx, budgetId, userId, value) : null
         let result: Prisma.InputJsonValue = {}
         let before: Prisma.InputJsonValue | undefined
         let after: Prisma.InputJsonValue | undefined
@@ -291,6 +293,7 @@ export async function applyMoney(userId: string, budgetId: string, body: unknown
         await tx.budget.update({ where: { id: budgetId }, data: { moneyRevision: revision } })
         const response = { ...(result as object), revision }
         await tx.moneyOperation.create({ data: { budgetId, actorUserId: userId, requestId, action: value.action, fingerprint, result: response, before, after } })
+        if (practice) await tx.tutorialProgress.update({ where: { userId }, data: { lesson: practice.next, firstActionAt: practice.progress.firstActionAt ?? new Date(), ...(practice.next === 5 && !practice.progress.completedAt ? { completedAt: new Date() } : {}) } })
         return response
       }, { isolationLevel: 'ReadCommitted', timeout: 15_000 })
     } catch (error) {
@@ -327,7 +330,7 @@ export async function moneySnapshot(userId: string, budgetId: string, selectedMo
     const rows = transactions.slice(0, 50).map(saved => ({ id: saved.id, kind: saved.kind, date: saved.date.toISOString().slice(0, 10), categoryId: saved.categoryId, memo: saved.memo, payee: saved.payee, version: saved.version, voided: !!saved.voidedAt, accountId: saved.entries[0].accountId, toAccountId: saved.entries[1]?.accountId ?? null, amount: decimal(cents(saved.entries[0].amount.toFixed(2), true) < 0n ? -cents(saved.entries[0].amount.toFixed(2), true) : cents(saved.entries[0].amount.toFixed(2), true)) }))
     const totalBalance = balances.reduce((sum, row) => sum + cents(row._sum.amount?.toFixed(2) ?? '0.00', true), 0n)
     return {
-      budget: { id: budget.id, name: budget.name, role: budget.role, currency: budget.currency, revision: budget.moneyRevision }, month, today, page, filters, hasNext: transactions.length > 50,
+      budget: { id: budget.id, name: budget.name, role: budget.role, currency: budget.currency, revision: budget.moneyRevision, isPractice: budget.isPractice }, month, today, page, filters, hasNext: transactions.length > 50,
       readyToAssign: decimal(totals.readyToAssign), futureAssigned: decimal(totals.futureAssigned), pastOverspending: decimal(totals.pastOverspending), totalBalance: decimal(totalBalance),
       accounts: accounts.map(saved => ({ id: saved.id, name: saved.name, kind: saved.kind, version: saved.version, closed: !!saved.closedAt, balance: balances.find(row => row.accountId === saved.id)?._sum.amount?.toFixed(2) ?? '0.00' })),
       groups: groups.map(saved => ({ id: saved.id, name: saved.name, note: saved.note, version: saved.version, archived: !!saved.archivedAt })),
@@ -350,7 +353,8 @@ export async function exportMoney(userId: string, budgetId: string, selectedMont
   const month = budgetMonth(selectedMonth)
   const filters = moneyFilters(month, input)
   return prisma.$transaction(async tx => {
-    await permission(tx, budgetId, userId)
+    const budget = await permission(tx, budgetId, userId)
+    if (budget.isPractice) throw new AccessError(403, 'Practice money stays out of financial exports.')
     const transactions = await tx.moneyTransaction.findMany({ where: transactionWhere(budgetId, month, filters), orderBy: [{ date: 'asc' }, { id: 'asc' }], take: 10001, include: { category: { select: { name: true } }, entries: { orderBy: { position: 'asc' }, include: { account: { select: { name: true } } } } } })
     if (transactions.length > 10000) throw new AccessError(413, 'This month exceeds the 10,000-record export limit')
     function cell(value: string) { return `"${(/^[\s]*[=+\-@\t\r]/.test(value) ? "'" + value : value).replaceAll('"', '""')}"` }
@@ -363,6 +367,7 @@ export function csvCell(value: string) { return `"${(/^[\s]*[=+\-@\t\r]/.test(va
 
 export async function exportReport(userId: string, budgetId: string, month: string, filters: FilterInput) {
   const data = await moneySnapshot(userId, budgetId, month, 1, filters), r = data.filteredReport
+  if (data.budget.isPractice) throw new AccessError(403, 'Practice money stays out of financial exports.')
   const rows = [['Bimo report', data.budget.name, month, 'NGN'], ['Measure', 'Amount'], ...(['opening', 'income', 'expenses', 'refunds', 'netSpending'] as const).map(key => [key, r[key]]), [], ['Category', 'Group', 'Assigned (whole month)', 'Net spending (filtered)', 'Available (whole month)'], ...data.categories.map(row => [row.name, data.groups.find(g => g.id === row.groupId)?.name ?? 'Ungrouped', row.assigned, r.categories.find(c => c.id === row.id)!.netSpending, row.available])]
   return rows.map(row => row.map(csvCell).join(',')).join('\r\n')
 }
@@ -370,6 +375,7 @@ export async function exportReport(userId: string, budgetId: string, month: stri
 export async function portableBudget(userId: string, budgetId: string) {
   return prisma.$transaction(async tx => {
     const budget = await permission(tx, budgetId, userId)
+    if (budget.isPractice) throw new AccessError(403, 'Practice money stays out of financial exports.')
     const [accounts, categories, groups, targets, assignments, transactions] = await Promise.all([
       tx.moneyAccount.findMany({ where: { budgetId }, take: 10001 }), tx.budgetCategory.findMany({ where: { budgetId }, take: 10001 }),
       tx.categoryGroup.findMany({ where: { budgetId }, take: 10001 }), tx.categoryTarget.findMany({ where: { budgetId }, take: 10001 }),

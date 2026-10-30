@@ -73,6 +73,35 @@ typography:
     fontWeight: 750
     lineHeight: 1.35
     letterSpacing: "-0.02em"
+  tutorial-welcome-heading:
+    fontFamily: "Manrope, system-ui, sans-serif"
+    fontSize: "38px"
+    fontWeight: 750
+    lineHeight: 1.35
+    letterSpacing: "-0.035em"
+  tutorial-welcome-heading-intermediate:
+    fontSize: "30px"
+  tutorial-welcome-heading-narrow:
+    fontSize: "28px"
+  tutorial-intro:
+    fontSize: "16px"
+    fontWeight: 400
+    lineHeight: 1.6
+  lesson-index:
+    fontSize: "18px"
+    fontWeight: 400
+    lineHeight: 1.6
+  practice-status:
+    fontSize: "10px"
+    fontWeight: 650
+  mission-caption:
+    fontSize: "11px"
+    fontWeight: 400
+  practice-summary:
+    fontSize: "25px"
+    fontWeight: 650
+    lineHeight: 1.4
+    letterSpacing: "-0.03em"
 rounded:
   progress: "4px"
   tab: "5px"
@@ -137,6 +166,16 @@ components:
     rounded: "{rounded.task-window}"
     padding: "22px 18px"
     width: "calc(100vw - 20px)"
+  mission-current-light:
+    backgroundColor: "{colors.light-active}"
+    textColor: "{colors.light-text}"
+    rounded: "{rounded.control}"
+    padding: "10px 8px"
+  mission-current-dark:
+    backgroundColor: "{colors.dark-active}"
+    textColor: "{colors.dark-text}"
+    rounded: "{rounded.control}"
+    padding: "10px 8px"
 ---
 
 # Design System: Bimo Canvas and Night Desk
@@ -156,8 +195,9 @@ The interface is built from the accepted Canvas prototype, with runtime records 
 - Exact NGN figures, tabular numerals and visible status language.
 - Shared geometry across light and dark appearances.
 - Immediate pending feedback, structural loading placeholders and recoverable errors.
+- Guided practice beside working controls, with saved-operation progress and explicit sample-money context.
 
-This document records `app/canvas.css`, root layout and the implemented components as of 29 October 2026. The frontmatter is the token inventory; `.impeccable/design.json` extends it with motion, breakpoints and renderable examples. Reference captures are in `.impeccable/review/`; their fixture amounts are evidence of layout, not product defaults.
+This document records `app/canvas.css`, `app/tutorial.css`, root layout and the implemented components as of 30 October 2026. The frontmatter is the token inventory; `.impeccable/design.json` extends it with motion, breakpoints and renderable examples. Reference captures are in `.impeccable/review/`; their fixture amounts are evidence of layout, not product defaults.
 
 ## Colors
 
@@ -197,6 +237,8 @@ Manrope's compact headings and clear numerals keep long-lived money tasks readab
 - **Financial summary:** the frontmatter financial-summary role; purpose-category figures use 24px with weight 650, line-height 1.4 and tracking −0.02em. Summary figures reduce to 24px at the intermediate breakpoint and 23px at the narrow breakpoint; narrow category figures use 25px.
 - **Supporting:** the supporting role plus 11px captions, metric labels/help and navigation details where defined by the component.
 
+The tutorial adds scoped roles rather than changing the everyday type hierarchy. Its welcome heading uses tutorial-welcome-heading, reducing to tutorial-welcome-heading-intermediate at 900px and tutorial-welcome-heading-narrow at 480px. The introduction uses tutorial-intro and returns to the body size at 900px. Numbered welcome lessons use lesson-index with tabular numerals; the guide's Practice only tag uses practice-status, completed mission captions use mission-caption, and its workspace figures use practice-summary at every tutorial breakpoint. Instruction, safety and preview copy use the existing 13px label size with body weight; guide and preview titles keep the title role. The literal sizes (38px, 30px, 16px, 18px, 10px, 11px and 25px) account for the seven advisory findings in the supplied tutorial detector scan. They are intentional source styles, not a new global scale or an instruction to repair unrelated screens.
+
 **The Exact Figures Rule.** Use formatted runtime NGN values with two decimal places and tabular numerals in financial figures, tables and breakdowns. Placeholder blocks carry no sample balances.
 
 ## Layout
@@ -211,9 +253,13 @@ Common form grids have two equal columns separated by 24px; the broader two-colu
 - **At 900px and below:** workspace padding becomes 26px; purpose columns become equal and the first group returns to one category column; the heading wraps. Settings gaps reduce to 28px and its right-hand section stops spanning rows.
 - **At 650px and below:** the header wraps its navigation onto a full-width row; the local-preview label disappears. Workspace margins become 10px and padding 22px 18px. Forms, purpose groups, directory, settings and skeleton columns become single columns. Summary figures become three stacked label/value rows. Month controls and budget actions wrap; the footer wraps too.
 
-These are the implemented narrow fallbacks. A separately designed mobile composition and the tutorial remain future work.
+These are the implemented narrow fallbacks. A separately designed mobile composition remains future work; guided practice is implemented within this existing system.
 
 Task windows use the frontmatter task-window width and padding, scroll internally, and cap their height at `calc(100dvh - 40px)`. At the existing 650px narrow breakpoint, they use the task-window-narrow geometry, cap their height at `calc(100dvh - 24px)`, collapse form grids to one column, wrap the footer and use 16px input, select and textarea text. Both appearances share this geometry.
+
+Guided practice has its own responsive composition inside the shared workspace. The welcome is capped at 1120px, with `1.1fr .9fr` columns, a 72px gap and 44px vertical margins. Its assurance is an open strip between line-colour rules; the four lesson previews are separated by bottom rules. There is no heading eyebrow. At 900px the welcome stacks with a 24px gap and 16px vertical margins; at 480px the gap becomes 12px.
+
+The practice workspace uses a 280px guide beside a flexible real workspace with a 36px gap. The guide has a right divider and 28px right padding. At 1100px its column becomes 240px, the gap becomes 24px, padding becomes 20px and summary figures stack. At 900px the guide moves above the workspace, changes to a bottom divider with 28px bottom padding and a two-column mission checklist; at 480px that checklist becomes one column. Guide actions stack on desktop, form a wrapping row at 900px and stack again at 480px. The existing 650px form fallback still applies. These widths keep the guide and working controls reachable; they do not complete the separate mobile milestone.
 
 ## Elevation & Depth
 
@@ -248,7 +294,7 @@ Panels use 26px vertical padding, a 12px top margin and a fine top border; they 
 
 ### Navigation
 
-The header presents the brand, Budgets, Account security and the appearance switch. Budget routes use compact links above a divider: the current page has the active fill and weight 800; hover uses raised fill. `NavLink` reserves a small accent dot and pulses it while navigation is pending. The month form keeps its fields present and changes its action to “Updating…” while the route transition runs. The skip link becomes visible on keyboard focus and targets the main workspace.
+The header presents the brand, Budgets, Account security, Learn Bimo and the appearance switch. Budget routes use compact links above a divider: the current page has the active fill and weight 800; hover uses raised fill. `NavLink` reserves a small accent dot and pulses it while navigation is pending. The month form keeps its fields present and changes its action to “Updating…” while the route transition runs. The skip link becomes visible on keyboard focus and targets the main workspace.
 
 ### Appearance switch
 
@@ -274,6 +320,18 @@ The task-window specimen in the sidecar is a static visual sample. Native focus 
 
 Notes has explicit reading and editing states. An empty item offers Add note; saved text offers Edit note and a secondary Delete note action in the negative colour role. Editing focuses the textarea, Save note returns to reading after success, and Cancel edit discards that draft and restores the action's focus. Delete clears only the note text through the existing versioned/audited operation, retaining the category/group. The save forms remain mounted when hidden so refresh and uncertain-request state are not lost. Changing fields clears any stale Saved message. Viewers have no note mutation controls.
 
+### Guided practice
+
+Learn Bimo opens a short welcome with four task-based missions and a separate practice-money assurance. The heading leads directly. Start/resume/replay and an optional route to real budgets or setup use the shared actions; completed core progress is acknowledged when returning. The welcome has no completion timer, score or streak.
+
+A compact, open guide sits beside the actual MoneyWorkspace, TaskDialog and SaveForm controls. Persistent Practice only language, the private sample-budget name and a native progress element distinguish the exercise from real budgets. The checklist shows four core missions, extending to six only when the optional two-step shortfall challenge is selected. Saved operations determine its count and Completed labels; future mission buttons are disabled, and the selected instruction uses an active wash, control boundary and `aria-current="step"`. Checkmarks supplement Completed text. A status announcement reports the saved count. The current instruction has a contextual Open Accounts/Budget/Transactions action and states the frozen practice date. The assignment mission also reports Food and Transport's individual saved assignment state.
+
+Selecting a completed mission or Back reviews its result without reversing entries; the workspace continues to show current balances. Return to current mission, Next review or Back to finish restores the appropriate explanation. A saved lesson change moves focus to the instruction heading without scrolling. Quiet completion says “You can make a plan.” and offers Use my own money, the optional challenge after core completion, or replay. Skip for now preserves the learner's place; Learn Bimo offers deliberate resume or replay. Restart and finish discard only the verified bound private sample budget, while personal completion is retained. Practice never seeds real budgets. These data and lifecycle guarantees belong to the runtime.
+
+Shared forms expose only the supported action for the current mission; practice navigation is limited to Budget, Accounts and Transactions. Exports, household invitations and unsupported practice mutations are blocked server-side. A person with view-only access to a shared real budget learns in their own separate sample budget. Pending actions use Updating… and disable duplicate actions; an uncertain response retains the same action/version/request identifier for retry while mounted, with a friendly alert and advice to reopen Learn Bimo to check progress. No Appcues SDK or paid onboarding service is used.
+
+The sidecar's mission checklist is a static visual specimen. It does not save operations, advance progress, restore focus, persist per-user state or perform skip/resume/replay/cleanup; those behaviors belong to the application runtime.
+
 ### Loading and action feedback
 
 Real Next route `loading.tsx` boundaries render `PageSkeleton` variants for budgets, budget subroutes, household, settings and authentication. Placeholder shapes mirror headings, tabs, metrics or form sections as appropriate. A single status container has `aria-busy="true"` and a spoken loading description; all decorative blocks are hidden from assistive technology. The 1.5s pulse animates opacity between 1 and 0.5. No artificial wait or sample money is used.
@@ -291,6 +349,7 @@ The reduced-motion preference removes animations and transitions, including spin
 - **Do** retain work during asynchronous actions and explain what a retry will send.
 - **Do** pair decorative loading with one accessible status and honour reduced motion.
 - **Do** reuse the self-hosted Manrope face and authored inline Bimo mark.
+- **Do** pair practice-only language and saved-operation counts with the actual working money controls.
 
 ### Don't:
 
@@ -299,3 +358,4 @@ The reduced-motion preference removes animations and transitions, including spin
 - **Don't** remove visible field labels, keyboard focus or textual error guidance.
 - **Don't** imply an unavailable provider, mailbox connection or account-deletion feature is ready.
 - **Don't** describe the narrow fallback as the separately planned mobile composition.
+- **Don't** replace saved tutorial progress with scores, streaks, countdowns or a Next click.

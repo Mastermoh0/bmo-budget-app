@@ -5,4 +5,4 @@ export function proxy(request: NextRequest) {
   if (!getSessionCookie(request, { cookiePrefix: 'bimo-foundation' })) return NextResponse.redirect(new URL('/auth/signin', request.url))
   return NextResponse.next()
 }
-export const config = { matcher: ['/setup', '/settings', '/budgets/:path*'] }
+export const config = { matcher: ['/setup', '/settings', '/budgets/:path*', '/learn/:path*'] }
