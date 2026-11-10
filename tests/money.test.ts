@@ -4,6 +4,7 @@ import { test, after } from 'node:test'
 import { randomUUID, randomInt } from 'node:crypto'
 import { prisma } from '../lib/db'
 import { cents, decimal, calendarDate, monthTotals } from '../lib/money-math'
+import { splitAssignments } from '../lib/quick-budget'
 
 const origin = process.env.BETTER_AUTH_URL!
 assert.equal(process.env.BIMO_DATABASE_TARGET, 'bimo_modern_test')
@@ -43,6 +44,41 @@ async function fixture() {
   return { browser, user, budget, path, save, read, account, category, post, assign }
 }
 after(async () => { await prisma.$disconnect() })
+
+test('Quick Budget: exact splits, atomic application, retries, stale previews and saved templates', async () => {
+  const f = await fixture(); await f.account('10000.00')
+  const food = await f.category('Food'), transport = await f.category('Transport'), savings = await f.category('Savings')
+  const portions = [{ label: 'Needs', percent: 80, categoryIds: [food.id,transport.id] }, { label: 'Savings', percent: 20, categoryIds: [savings.id] }]
+  const tiny = splitAssignments('0.03', portions)
+  assert.equal(tiny.reduce((sum,row) => sum+cents(row.amount),0n),3n)
+  assert.deepEqual(tiny.map(row => row.amount),['0.01','0.01','0.01'])
+  assert.throws(() => splitAssignments('100', [{ ...portions[0], percent: 90 }]))
+  const revision = (await f.read()).budget.revision
+  const body = { requestId: randomUUID(), action: 'quick-budget', month: '2026-09', amount: '1000.01', portions, revision }
+  await result(await f.browser.call(f.path, body)); await result(await f.browser.call(f.path, body))
+  let snapshot = await f.read()
+  assert.equal(snapshot.readyToAssign, '8999.99'); assert.equal(snapshot.totalBalance, '10000.00')
+  assert.deepEqual(snapshot.categories.map((row: { assigned: string }) => row.assigned).sort(), ['200.00','400.00','400.01'])
+  await f.save({ ...body, requestId: randomUUID(), revision },409)
+  await f.save({ ...body, requestId: randomUUID(), revision: snapshot.budget.revision, amount: '10000' },400)
+  await f.save({ ...body, requestId: randomUUID(), revision: snapshot.budget.revision, portions: [{...portions[0], categoryIds: [food.id,savings.id]},portions[1]] },400)
+  await f.save({ ...body, requestId: randomUUID(), revision: snapshot.budget.revision, portions: [{...portions[0], categoryIds: [food.id,'missing']},portions[1]] },400)
+  assert.equal((await f.read()).readyToAssign,'8999.99')
+  const split = { id: randomUUID(), name: 'My salary', portions }
+  await f.save({ action: 'save-split', revision: snapshot.budget.revision, split })
+  snapshot = await f.read(); assert.deepEqual(snapshot.quickBudgetSplits,[split])
+  await f.save({ action: 'save-split', revision: snapshot.budget.revision, split: {...split,name:'Updated salary'} })
+  snapshot = await f.read(); assert.equal(snapshot.quickBudgetSplits.length,1); assert.equal(snapshot.quickBudgetSplits[0].name,'Updated salary')
+  const outsider = await identity()
+  await result(await outsider.browser.call(f.path,{ ...body,requestId:randomUUID(),revision:snapshot.budget.revision }),404)
+  await prisma.budgetMember.create({data:{budgetId:f.budget.id,userId:outsider.user.id,role:'VIEWER'}})
+  for (const command of [{...body,requestId:randomUUID()}, {action:'save-split',split,requestId:randomUUID()}, {action:'delete-split',id:split.id,requestId:randomUUID()}]) await result(await outsider.browser.call(f.path,{...command,revision:snapshot.budget.revision}),403)
+  await prisma.budgetMember.update({where:{budgetId_userId:{budgetId:f.budget.id,userId:outsider.user.id}},data:{role:'EDITOR'}})
+  await result(await outsider.browser.call(f.path,{action:'save-split',split,requestId:randomUUID(),revision:snapshot.budget.revision}))
+  snapshot = await f.read()
+  await f.save({action:'delete-split',id:split.id,revision:snapshot.budget.revision})
+  snapshot = await f.read(); assert.deepEqual(snapshot.quickBudgetSplits,[]); assert.equal(snapshot.readyToAssign,'8999.99')
+})
 
 test('exact money and calendar primitives reject malformed input', () => {
   assert.equal(decimal(cents('0.10') + cents('0.20')), '0.30')

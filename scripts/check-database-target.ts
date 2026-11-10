@@ -15,7 +15,7 @@ try {
   if (tables.rows.length) {
     assert(tables.rows.some(row => row.tablename === '_prisma_migrations'), 'Existing unrelated tables must not be adopted')
     const migration = await client.query('SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NOT NULL')
-    assert(migration.rows.every(row => /^\d+_bimo_/.test(row.migration_name)), 'Unexpected migration history')
+    assert(migration.rows.every(row => /^\d+_bimo_/.test(row.migration_name) || row.migration_name === '20261110010000_quick_budget'), 'Unexpected migration history')
   }
   console.log(`Validated isolated target: ${target}; public tables: ${tables.rows.length}`)
 } finally { await client.end() }

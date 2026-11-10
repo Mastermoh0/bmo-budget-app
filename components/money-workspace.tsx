@@ -7,6 +7,7 @@ import { GroupSelect, GroupControls, GroupedWorksheet, ReorderControls } from '.
 import { Targets } from './savings-targets'
 import { MoneyFilterForm } from './money-filters'
 import { BudgetNotes } from './budget-notes'
+import { QuickBudget } from './quick-budget'
 import { MoneyReport } from './money-report'
 import { NavigationForm } from './navigation-form'
 import type { MoneySnapshot } from '@/lib/money'
@@ -52,6 +53,7 @@ export function MoneyWorkspace({ data, view, practiceLesson = 0 }: { data: Money
     <div className="metrics"><section className="panel"><h2>Ready to assign</h2><strong className={data.readyToAssign.startsWith('-') ? 'negative' : 'ready-figure'}>{money(data.readyToAssign)}</strong><p className="small muted">After future allocations and earlier overspending</p></section><section className="panel"><h2>Net spending</h2><strong>{money(data.report.netSpending)}</strong><p className="small muted">Expenses less refunds in {data.month}</p></section><section className="panel"><h2>Account total</h2><strong>{money(data.totalBalance)}</strong><p className="small muted">Through the end of {data.month}</p></section></div>
     {!canWrite && <p className="notice">You have view-only access. Financial changes are available to the owner and editors.</p>}
     {view === 'budget' && <>
+      {canManage && <div className="task-actions"><QuickBudget data={data} /></div>}
       <GroupedWorksheet data={data} canAssign={canAssign} onAssign={() => assignWindow.current?.open()} onAddCategory={() => categoryWindow.current?.open()} />
       {canWrite && <><div className="task-actions">{canAssign && <TaskDialog ref={assignWindow} title="Assign money"><SaveForm budgetId={data.budget.id} label="Assign money" build={fields => ({ ...fields, action: 'assign', month: data.month, revision: data.budget.revision })}><CategorySelect data={data} /><Amount signed /><p className="small muted">A positive amount assigns money. A negative amount returns available money.</p></SaveForm></TaskDialog>}{canMove && <TaskDialog title="Move between categories" label="Move money"><SaveForm budgetId={data.budget.id} label="Move allocation" build={fields => ({ ...fields, action: 'move', month: data.month, revision: data.budget.revision })}><CategorySelect data={data} label="From category" /><CategorySelect data={data} name="toCategoryId" label="To category" /><Amount /></SaveForm></TaskDialog>}</div>
         {canManage && <details className="budget-tools" open={!data.categories.length}><summary>Organize categories and groups</summary><div className="task-actions"><TaskDialog ref={categoryWindow} title="Add a category" label="Add category"><SaveForm budgetId={data.budget.id} label="Add category" build={fields => ({ ...fields, action: 'category' })}><label>Category name<input name="name" required maxLength={80} placeholder="Groceries" /></label><GroupSelect data={data} /></SaveForm></TaskDialog></div>

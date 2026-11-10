@@ -1773,3 +1773,27 @@ The next remaining desktop feature decision is the Quick Budget preview/selectio
 ![Welcome to guided practice](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/onboarding-2026-10-30/01-welcome-light.png)
 
 ![Practice with the real controls](C:/Users/MasterMoh/.codex/visualizations/2026/10/25/01a173e9-b493-7902-9acb-c6ccae4374e8/onboarding-2026-10-30/review-practice-desktop-dark.png)
+
+
+## 42. Percentage Quick Budget — implemented locally, 10 November 2026
+
+The approved Quick Budget contract supersedes earlier target-funding/repeat-last-month proposals: apply a percentage split to available money in an existing budget. Five presets are available: Balanced 50/30/20 (needs/wants/goals), More for essentials 60/20/20, Simple spending and saving 80/20, Essentials-heavy 70/20/10 (needs/wants/goals), and Spending/saving/giving 70/20/10. Labels distinguish the two different 70/20/10 interpretations. These are editable starting points, not a ranking of Nigerian budgeting habits or mandatory financial recommendations.
+
+### How to use it
+
+Open a real budget, click Quick Budget, choose a preset or saved/custom split, and enter an amount within Ready to assign. Map each portion to existing active categories. A category belongs to one portion; multiple categories in a portion share its allocation equally. Whole-number percentages must total 100%. Portion names/percentages can be edited and portions added/removed. Save named splits to reuse their mappings; update, duplicate with Save as new, or delete them. Templates are shared within the budget; owners/editors can manage/apply them and viewers cannot write. Up to 20 templates and 20 portions per template are supported.
+
+Preview lists each category's current availability, proposed addition, resulting availability and remaining Ready to assign. Apply adds all assignments together for the displayed month without replacing earlier assignments or moving money at a bank. Saving/deleting a template alone never changes allocations. No forecast income or automatic payday job is introduced.
+
+### Financial and storage contract
+
+Amounts use exact integer kobo. Percentage rounding uses largest fractional remainders with stable portion-order ties; equal category shares distribute leftover kobo in selection order. The complete allocation equals the chosen amount. Server recomputes every share, verifies active budget-scoped categories, permissions, available money and the preview revision under the existing budget lock. One transaction records all assignments, one revision and one auditable operation. Request identity makes interrupted retries safe; stale previews must be refreshed/reviewed. Configuration locks during an uncertain application so its original request remains available for retry.
+
+Migration `20261110010000_quick_budget` adds a default-empty JSONB template collection to Budget, preserving existing records. It was deployed to the isolated modern local development and test databases. The database-target guard recognizes this exact migration in addition to the existing bimo-prefixed history. Dependencies and lockfiles are unchanged.
+
+### Verification and evidence
+
+Production build and lint passed. All 47 automated tests passed, including exact rounding, batch application and retry, unchanged account balances, stale previews, insufficient funds, duplicate/missing category rejection, saved-template updates/deletion and viewer/editor/outsider permissions. Browser checks saved and reused a 50/30/20 mapping, then applied NGN 10,000: Food 1,666.67, Transport 1,666.67, Rent savings 1,666.66, Personal spending 3,000 and Emergency fund 2,000. Account total stayed NGN 100,000 and Ready to assign became NGN 90,000. Only a separate synthetic walkthrough budget was used. Desktop, dark and narrow screenshots and a recording are under `.impeccable/review/quick-budget/`. Detector findings were limited to existing typography advisories in canvas.css.
+
+The push also includes the previously requested pending shortcut/tutorial and note-undo improvements. Gmail drafts, real provider configuration, Sentry, privacy/deletion/restore, public hosting checks and the separate mobile composition remain outstanding.
+Final browser confirmation covered all five preset previews, custom creation/reload persistence, duplication and deletion. A browser-discovered delete-dialog completion issue was fixed and retested successfully. The independent finish review returned SHIP for this extension; narrow-screen editing still involves substantial scrolling. Screenshots, recording and the scoped verdict are retained in the repository under `.impeccable/review/quick-budget/`.

@@ -114,6 +114,7 @@ model Budget {
   updatedAt           DateTime       @updatedAt
   archivedAt          DateTime?
   moneyRevision       Int            @default(0)
+  quickBudgetSplits   Json           @default("[]")
   isPractice          Boolean        @default(false)
   tutorial            TutorialProgress?
   moneyAccounts       MoneyAccount[]

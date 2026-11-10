@@ -1,6 +1,6 @@
 'use client'
 import { useSyncExternalStore } from 'react'
-import { appearanceKey } from '@/lib/appearance'
+import { appearanceKey, toggleAppearance } from '@/lib/appearance'
 import { useHydrated } from '@/lib/use-hydrated'
 
 function read() { return document.documentElement.dataset.appearance === 'dark' }
@@ -11,11 +11,5 @@ function subscribe(update: () => void) {
 }
 export function AppearanceSwitch() {
   const dark = useSyncExternalStore(subscribe, read, () => false), ready = useHydrated()
-  function toggle() {
-    const mode = dark ? 'light' : 'dark'
-    document.documentElement.dataset.appearance = mode
-    try { localStorage.setItem(appearanceKey, mode) } catch { /* A blocked store must not prevent switching this page. */ }
-    window.dispatchEvent(new Event('bimo-appearance'))
-  }
-  return <button type="button" className="appearance-control" role="switch" aria-checked={dark} disabled={!ready} onClick={toggle}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10Z" /></svg>Dark mode<span className="appearance-track" aria-hidden="true"><span /></span></button>
+  return <button type="button" className="appearance-control" role="switch" aria-checked={dark} disabled={!ready} onClick={toggleAppearance}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10Z" /></svg>Dark mode<span className="appearance-track" aria-hidden="true"><span /></span></button>
 }

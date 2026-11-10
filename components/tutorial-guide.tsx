@@ -14,6 +14,7 @@ export function TutorialGuide({ progress, data }: { progress: PracticeProgress; 
   return <aside className="tutorial-guide" aria-label="Practice guide">
     <div className="row spread"><h2>Learning missions</h2><span className="status">Practice only</span></div>
     <p className="small muted">Sample money, private to you. Your real budgets are untouched.</p>
+    <section className="tutorial-shortcuts" aria-label="Optional keyboard shortcuts"><p><strong>Optional shortcut:</strong> press <kbd>Ctrl / ⌘ K</kbd> for Quick actions, or <kbd>T</kbd> to change theme. In your own budget, <kbd>N</kbd> opens Notes.</p></section>
     <progress value={done} max={count} aria-label="Practice missions completed" />
     <p className="small" role="status">{done} of {count} missions complete</p>
     <ol className="mission-list">{lessons.slice(0, count).map((item, index) => <li key={item.title}><button type="button" className="secondary" aria-current={shown === index + 1 ? 'step' : undefined} disabled={index + 1 > progress.lesson} onClick={() => setReview(index + 1 < progress.lesson ? index + 1 : null)}><span className="mission-number" aria-hidden="true">{index + 1 < progress.lesson ? <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg> : index + 1}</span><span>{item.title}{index + 1 < progress.lesson && <small>Completed</small>}</span></button></li>)}</ol>

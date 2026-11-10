@@ -6,12 +6,16 @@ import { budgetMonth, calendarDate, cents, decimal, monthTotals, todayLagos } fr
 import { targetProgress } from './targets'
 import { moneyFilters, transactionWhere, reportWhere, type FilterInput } from './money-filters'
 import { practiceCommand } from './tutorial-guard'
+import { splitAssignments, validatePortions, type SavedSplit, type SplitPortion } from './quick-budget'
 
 type Tx = Prisma.TransactionClient
 const kinds = ['INCOME', 'EXPENSE', 'TRANSFER', 'REFUND'] as const
 type PostingKind = typeof kinds[number] | 'OPENING'
 type Posting = { kind: PostingKind; date: Date; accountId: string; toAccountId: string | null; categoryId: string | null; amount: string; memo: string; payee?: string }
 export type Command =
+  | { action: 'quick-budget'; month: string; amount: string; portions: SplitPortion[]; revision: number }
+  | { action: 'save-split'; split: SavedSplit; revision: number }
+  | { action: 'delete-split'; id: string; revision: number }
   | { action: 'note'; kind: 'group' | 'category'; id: string; version: number; note: string }
   | { action: 'account'; name: string; kind: 'BANK' | 'SAVINGS' | 'CASH'; amount: string; date: Date }
   | { action: 'category'; name: string; groupId?: string | null }
@@ -60,6 +64,15 @@ function command(body: unknown): { requestId: string; value: Command } {
   const requestId = text(data.requestId, 'Request ID')
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) throw new AccessError(400, 'A valid request ID is required')
   switch (data.action) {
+    case 'quick-budget': case 'save-split': {
+      let portions: SplitPortion[]
+      const source = data.action === 'save-split' ? data.split as SavedSplit : data
+      try { portions = validatePortions(source?.portions) } catch (error) { throw new AccessError(400, (error as Error).message) }
+      const revision = integer(data.revision)
+      if (data.action === 'save-split') return { requestId, value: { action: 'save-split', revision, split: { id: text(source.id, 'Split ID'), name: text(source.name, 'Split name'), portions } } }
+      return { requestId, value: { action: 'quick-budget', month: budgetMonth(data.month), amount: amount(data.amount), portions, revision } }
+    }
+    case 'delete-split': return { requestId, value: { action: 'delete-split', id: text(data.id, 'Split ID'), revision: integer(data.revision) } }
     case 'note': {
       if (!['group', 'category'].includes(data.kind as string) || typeof data.note !== 'string' || data.note.length > 1000) throw new AccessError(400, 'Choose a group/category and keep its note within 1,000 characters')
       return { requestId, value: { action: 'note', kind: data.kind as 'group' | 'category', id: text(data.id, 'Item'), version: integer(data.version), note: data.note.trim() } }
@@ -164,7 +177,33 @@ export async function applyMoney(userId: string, budgetId: string, body: unknown
         let result: Prisma.InputJsonValue = {}
         let before: Prisma.InputJsonValue | undefined
         let after: Prisma.InputJsonValue | undefined
-        if (value.action === 'note') {
+        if (value.action === 'quick-budget' || value.action === 'save-split' || value.action === 'delete-split') {
+          if (budget.moneyRevision !== value.revision) throw new AccessError(409, 'The budget changed. Refresh and review your split again.')
+          if (value.action === 'quick-budget') {
+            const changes = splitAssignments(value.amount, value.portions)
+            for (const row of changes) await category(tx, budgetId, row.categoryId)
+            const data = await aggregates(tx, budgetId)
+            const totals = monthTotals(value.month, data.assignments, data.activity, data.inflows)
+            if (totals.readyToAssign < cents(value.amount)) throw new AccessError(400, 'There is not enough ready-to-assign money for this split.')
+            before = record(data.assignments.filter(row => row.month === value.month))
+            const month = calendarDate(`${value.month}-01`)
+            for (const row of changes) if (cents(row.amount) > 0n) await tx.budgetAssignment.upsert({ where: { budgetId_categoryId_month: { budgetId, categoryId: row.categoryId, month } }, create: { budgetId, categoryId: row.categoryId, month, amount: row.amount }, update: { amount: { increment: row.amount } } })
+            after = record({ month: value.month, changes }); result = { month: value.month }
+          } else {
+            let splits = budget.quickBudgetSplits as SavedSplit[]
+            before = record(splits)
+            if (value.action === 'save-split') {
+              for (const row of value.split.portions) for (const id of row.categoryIds) await category(tx, budgetId, id)
+              if (splits.length >= 20 && !splits.some(row => row.id === value.split.id)) throw new AccessError(400, 'Keep up to 20 saved splits per budget.')
+              splits = [...splits.filter(row => row.id !== value.split.id), value.split]
+            } else {
+              if (!splits.some(row => row.id === value.id)) throw new AccessError(404, 'Saved split not found')
+              splits = splits.filter(row => row.id !== value.id)
+            }
+            await tx.budget.update({ where: { id: budgetId }, data: { quickBudgetSplits: splits } })
+            after = record(splits); result = { saved: true }
+          }
+        } else if (value.action === 'note') {
           const saved = value.kind === 'category' ? await category(tx, budgetId, value.id, true) : await tx.categoryGroup.findFirst({ where: { budgetId, id: value.id } })
           if (!saved) throw new AccessError(404, 'Note item not found')
           if (saved.version !== value.version) throw new AccessError(409, 'This item changed. Refresh before saving its note.')
@@ -330,7 +369,7 @@ export async function moneySnapshot(userId: string, budgetId: string, selectedMo
     const rows = transactions.slice(0, 50).map(saved => ({ id: saved.id, kind: saved.kind, date: saved.date.toISOString().slice(0, 10), categoryId: saved.categoryId, memo: saved.memo, payee: saved.payee, version: saved.version, voided: !!saved.voidedAt, accountId: saved.entries[0].accountId, toAccountId: saved.entries[1]?.accountId ?? null, amount: decimal(cents(saved.entries[0].amount.toFixed(2), true) < 0n ? -cents(saved.entries[0].amount.toFixed(2), true) : cents(saved.entries[0].amount.toFixed(2), true)) }))
     const totalBalance = balances.reduce((sum, row) => sum + cents(row._sum.amount?.toFixed(2) ?? '0.00', true), 0n)
     return {
-      budget: { id: budget.id, name: budget.name, role: budget.role, currency: budget.currency, revision: budget.moneyRevision, isPractice: budget.isPractice }, month, today, page, filters, hasNext: transactions.length > 50,
+      budget: { id: budget.id, name: budget.name, role: budget.role, currency: budget.currency, revision: budget.moneyRevision, isPractice: budget.isPractice }, quickBudgetSplits: budget.quickBudgetSplits as SavedSplit[], month, today, page, filters, hasNext: transactions.length > 50,
       readyToAssign: decimal(totals.readyToAssign), futureAssigned: decimal(totals.futureAssigned), pastOverspending: decimal(totals.pastOverspending), totalBalance: decimal(totalBalance),
       accounts: accounts.map(saved => ({ id: saved.id, name: saved.name, kind: saved.kind, version: saved.version, closed: !!saved.closedAt, balance: balances.find(row => row.accountId === saved.id)?._sum.amount?.toFixed(2) ?? '0.00' })),
       groups: groups.map(saved => ({ id: saved.id, name: saved.name, note: saved.note, version: saved.version, archived: !!saved.archivedAt })),

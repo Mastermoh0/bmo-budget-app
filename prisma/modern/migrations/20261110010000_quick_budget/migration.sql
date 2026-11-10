@@ -1,0 +1,1 @@
+ALTER TABLE "Budget" ADD COLUMN "quickBudgetSplits" JSONB NOT NULL DEFAULT '[]';

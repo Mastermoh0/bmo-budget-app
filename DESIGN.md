@@ -320,6 +320,10 @@ The task-window specimen in the sidecar is a static visual sample. Native focus 
 
 Notes has explicit reading and editing states. An empty item offers Add note; saved text offers Edit note and a secondary Delete note action in the negative colour role. Editing focuses the textarea, Save note returns to reading after success, and Cancel edit discards that draft and restores the action's focus. Delete clears only the note text through the existing versioned/audited operation, retaining the category/group. The save forms remain mounted when hidden so refresh and uncertain-request state are not lost. Changing fields clears any stale Saved message. Viewers have no note mutation controls.
 
+### Quick Budget
+
+Quick Budget extends the existing focused task window with five percentage presets and editable named splits, retaining Canvas/Night Desk typography, semantic colors, labelled fields, narrow stacked forms and the shared pending/retry behavior. Each portion maps to existing active categories; categories can appear only once, and multiple categories in one portion divide its money equally with deterministic cent rounding. A required preview shows current, added and resulting category balances before an atomic assignment; saved splits can be reused, updated, duplicated or deleted without changing existing assignments.
+
 ### Guided practice
 
 Learn Bimo opens a short welcome with four task-based missions and a separate practice-money assurance. The heading leads directly. Start/resume/replay and an optional route to real budgets or setup use the shared actions; completed core progress is acknowledged when returning. The welcome has no completion timer, score or streak.
@@ -359,3 +363,4 @@ The reduced-motion preference removes animations and transitions, including spin
 - **Don't** imply an unavailable provider, mailbox connection or account-deletion feature is ready.
 - **Don't** describe the narrow fallback as the separately planned mobile composition.
 - **Don't** replace saved tutorial progress with scores, streaks, countdowns or a Next click.
+
